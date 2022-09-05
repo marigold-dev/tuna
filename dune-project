@@ -1,0 +1,32 @@
+(lang dune 3.4)
+
+(cram enable)
+
+(license MIT)
+
+(authors "Marigold.dev")
+
+(maintainers "Marigold.dev")
+
+(generate_opam_files true)
+
+(package
+ (name tunac)
+ (synopsis "michelson to wasm compiler")
+ (description "michelson to wasm compiler")
+ (depends
+  (ocaml
+   (>= 4.13.1))
+  dune
+  zarith
+  ppx_deriving
+  ppx_yojson_conv
+  yojson
+  wasm
+  data-encoding
+  tezos-micheline
+  (ocamlformat-rpc :with-test)
+  (ocamlformat :with-test)
+  (ocaml-lsp-server :with-test)
+  (odoc :with-doc)
+  (odig :with-doc)))

@@ -1,0 +1,3 @@
+(executable
+ (name tunacc_test)
+ (libraries))
