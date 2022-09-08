@@ -6,6 +6,7 @@ module rec V : sig
   and t =
     | Int of Z.t
     | String of string
+    | Bytes of bytes
     | Bool of int
     | Pair of t * t
     | Union of union

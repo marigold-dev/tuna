@@ -55,7 +55,7 @@ let base t =
    (table $shadow_stack 1000 externref)
    (global $sh_sp (mut i32) (i32.const 1000)) ;;shadow_stack stack pointer
      (func $dip (param $n i32) (result)
-         (local $stop i32) 
+         (local $stop i32)
          (local $sp' i32)
          (local $sh_sp' i32)
          (local.set $stop (i32.const 0))
@@ -173,6 +173,7 @@ br_if $loop
    (func $drop (param $n i32) (result)   
         (global.set $sp (i32.add (global.get $sp) (local.get $n)))  ;;set stackptr
    )
+   %s
    (func $main (param $v1 externref) (result externref)
     (call $push (local.get $v1))
      %a
