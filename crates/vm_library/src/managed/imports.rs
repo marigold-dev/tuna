@@ -1,46 +1,36 @@
-use std::{ops::Add, rc::Rc, sync::Arc};
+use std::ops::Add;
 
 use rug::Integer;
-use wasmer::{Exports, ExternRef, Function, ImportObject, Store};
+use slotmap::{DefaultKey, Key};
+use wasmer::{Exports, Function, ImportObject, Store};
 
+use super::value::*;
+use crate::conversions;
 use crate::{
     env::Context,
     errors::{ffi::FFIError, vm::VmError, VMResult},
 };
 
-use super::value::*;
-pub fn compare(env: &Context, value1: &Value, value2: &Value) -> VMResult<ExternRef> {
+pub fn compare(env: &Context, value1: &Value, value2: &Value) -> VMResult<i64> {
     env.update_gas(300)?;
-    let cmp_res = (*value1).cmp(value2) as i8;
-    Ok(ExternRef::new(Value::Int(cmp_res.into())))
+    let cmp_res = (*value1).cmp(value2) as i64;
+    Ok(cmp_res)
 }
-pub fn equal(env: &Context, value1: &Value, value2: &Value) -> VMResult<ExternRef> {
+pub fn equal(env: &Context, value1: &Value, value2: &Value) -> VMResult<i64> {
     env.update_gas(300)?;
-    let cmp_res = value1.eq(value2);
-    Ok(ExternRef::new(Value::Bool(cmp_res)))
+    let cmp_res = value1.eq(value2) as i64;
+    Ok(cmp_res)
 }
-pub fn or(env: &Context, value1: &Value, value2: &Value) -> VMResult<ExternRef> {
+pub fn or(env: &Context, value1: &i64, value2: &i64) -> VMResult<i64> {
     env.update_gas(300)?;
-    match (value1, value2) {
-        (Value::Bool(x), Value::Bool(y)) => Ok(ExternRef::new(Value::Bool(*x || *y))),
-        (Value::Bool(_), err) | (err, Value::Bool(_)) => Err(FFIError::ExternError {
-            value: (*err).clone(),
-            msg: "type mismatch, expected Bool".to_string(),
-        }
-        .into()),
-        (_, _) => Err(FFIError::ExternError {
-            value: Value::Pair(Box::new(((*value1).clone(), (*value2).clone()))),
-            msg: "type mismatch, expected Bool".to_string(),
-        }
-        .into()),
-    }
+    Ok(value1 | value2)
 }
 
-pub fn neq(env: &Context, value: &Value) -> VMResult<ExternRef> {
+pub fn neq(env: &Context, value: &Value) -> VMResult<i64> {
     env.update_gas(300)?;
     match value {
-        Value::Int(n) if n == &Integer::ZERO => Ok(ExternRef::new(Value::Bool(false))),
-        Value::Int(n) if n == &Integer::from(1) => Ok(ExternRef::new(Value::Bool(true))),
+        Value::Int(n) if n == &Integer::ZERO => Ok(0),
+        Value::Int(n) if n == &Integer::from(1) => Ok(1),
 
         _ => Err(FFIError::ExternError {
             value: (*value).clone(),
@@ -50,22 +40,18 @@ pub fn neq(env: &Context, value: &Value) -> VMResult<ExternRef> {
     }
 }
 
-pub fn not(env: &Context, value: &Value) -> VMResult<ExternRef> {
+pub fn not(env: &Context, value: &i64) -> VMResult<i64> {
     env.update_gas(300)?;
-    match value {
-        Value::Bool(false) => Ok(ExternRef::new(Value::Bool(true))),
-        Value::Bool(true) => Ok(ExternRef::new(Value::Bool(false))),
-        _ => Err(FFIError::ExternError {
-            value: value.clone(),
-            msg: "type mismatch, expected Pair".to_string(),
-        }
-        .into()),
-    }
+    Ok(!value)
 }
-pub fn pair(env: &Context, value1: &Value, value2: &Value) -> VMResult<ExternRef> {
+pub fn pair(env: &Context, value1: DefaultKey, value2: DefaultKey) -> VMResult<i64> {
     env.update_gas(300)?;
-    let res = Value::Pair(Box::new((value1.clone(), value2.clone())));
-    Ok(ExternRef::new(res))
+    let res = Value::Pair {
+        fst: value1,
+        snd: value2,
+    };
+    let key = env.bump(res);
+    conversions::to_i64(key)
 }
 pub fn unpair(env: &Context, value: &Value) -> VMResult<(ExternRef, ExternRef)> {
     env.update_gas(300)?;
@@ -81,7 +67,7 @@ pub fn unpair(env: &Context, value: &Value) -> VMResult<(ExternRef, ExternRef)> 
         .into()),
     }
 }
-pub fn car(env: &Context, value: &Value) -> VMResult<ExternRef> {
+pub fn car(env: &Context, value: &Value) -> VMResult<i64> {
     env.update_gas(300)?;
     match value {
         Value::Pair(boxed) => Ok(ExternRef::new(boxed.0.clone())),
@@ -92,7 +78,7 @@ pub fn car(env: &Context, value: &Value) -> VMResult<ExternRef> {
         .into()),
     }
 }
-pub fn cdr(env: &Context, value: &Value) -> VMResult<ExternRef> {
+pub fn cdr(env: &Context, value: &Value) -> VMResult<i64> {
     env.update_gas(300)?;
     match value {
         Value::Pair(boxed) => Ok(ExternRef::new(boxed.1.clone())),
@@ -103,7 +89,7 @@ pub fn cdr(env: &Context, value: &Value) -> VMResult<ExternRef> {
         .into()),
     }
 }
-pub fn z_add(env: &Context, value1: &Value, value2: &Value) -> VMResult<ExternRef> {
+pub fn z_add(env: &Context, value1: &Value, value2: &Value) -> VMResult<i64> {
     env.update_gas(300)?;
     match (value1, value2) {
         (Value::Int(x), Value::Int(y)) => {
@@ -122,7 +108,7 @@ pub fn z_add(env: &Context, value1: &Value, value2: &Value) -> VMResult<ExternRe
         .into()),
     }
 }
-pub fn z_sub(env: &Context, value1: &Value, value2: &Value) -> VMResult<ExternRef> {
+pub fn z_sub(env: &Context, value1: &Value, value2: &Value) -> VMResult<i64> {
     env.update_gas(300)?;
     match (value1, value2) {
         (Value::Int(x), Value::Int(y)) => {
@@ -141,7 +127,7 @@ pub fn z_sub(env: &Context, value1: &Value, value2: &Value) -> VMResult<ExternRe
         .into()),
     }
 }
-pub fn is_left(env: &Context, value: &Value) -> VMResult<(ExternRef, i32)> {
+pub fn is_left(env: &Context, value: &Value) -> VMResult<(i64, i32)> {
     env.update_gas(300)?;
     match value {
         Value::Union(Union::Left(l)) => Ok((ExternRef::new((*l).clone()), 1)),
@@ -174,7 +160,7 @@ pub fn failwith(env: &Context, value: &Value) -> VMResult<()> {
         .into()),
     }
 }
-pub fn is_none(env: &Context, value: &Value) -> VMResult<(ExternRef, i32)> {
+pub fn is_none(env: &Context, value: &Value) -> VMResult<(i64, i32)> {
     env.update_gas(300)?;
     match value {
         Value::Option(x) => (*x).clone().map_or_else(
@@ -188,7 +174,7 @@ pub fn is_none(env: &Context, value: &Value) -> VMResult<(ExternRef, i32)> {
         .into()),
     }
 }
-pub fn is_nat(env: &Context, value: &Value) -> VMResult<ExternRef> {
+pub fn is_nat(env: &Context, value: &Value) -> VMResult<i64> {
     env.update_gas(300)?;
     match value {
         Value::Int(x) if *x >= Integer::ZERO => Ok(ExternRef::new(Value::Option(Box::new(Some(
@@ -202,13 +188,13 @@ pub fn is_nat(env: &Context, value: &Value) -> VMResult<ExternRef> {
         .into()),
     }
 }
-pub fn some(env: &Context, value: &Value) -> VMResult<ExternRef> {
+pub fn some(env: &Context, value: &Value) -> VMResult<i64> {
     env.update_gas(300)?;
     Ok(ExternRef::new(Value::Option(Box::new(Some(
         (*value).clone(),
     )))))
 }
-pub fn get_n(env: &Context, idx: u32, value: &Value) -> VMResult<ExternRef> {
+pub fn get_n(env: &Context, idx: u32, value: &Value) -> VMResult<i64> {
     env.update_gas(300 * (idx as u64))?;
     if idx == 0 {
         return Ok(ExternRef::new((*value).clone()));
@@ -243,7 +229,7 @@ pub fn get_n(env: &Context, idx: u32, value: &Value) -> VMResult<ExternRef> {
     }
     Ok(ExternRef::new(current))
 }
-pub fn mem(env: &Context, value1: &Value, value2: &Value) -> VMResult<ExternRef> {
+pub fn mem(env: &Context, value1: &Value, value2: &Value) -> VMResult<i64> {
     env.update_gas(300)?;
     match value1 {
         Value::Map(x) => {
@@ -261,7 +247,7 @@ pub fn mem(env: &Context, value1: &Value, value2: &Value) -> VMResult<ExternRef>
         .into()),
     }
 }
-pub fn map_get(env: &Context, value1: &Value, value2: &Value) -> VMResult<ExternRef> {
+pub fn map_get(env: &Context, value1: &Value, value2: &Value) -> VMResult<i64> {
     env.update_gas(300)?;
     match value1 {
         Value::Map(x) => {
@@ -278,7 +264,7 @@ pub fn map_get(env: &Context, value1: &Value, value2: &Value) -> VMResult<Extern
         .into()),
     }
 }
-pub fn update(env: &Context, map: &Value, key: &Value, value: &Value) -> VMResult<ExternRef> {
+pub fn update(env: &Context, map: &Value, key: &Value, value: &Value) -> VMResult<i64> {
     env.update_gas(300)?;
     match (map, value) {
         (Value::Map(x), Value::Option(boxed)) => {

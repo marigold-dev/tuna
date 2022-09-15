@@ -2,7 +2,7 @@ use crate::{
     errors::{vm::VmError, VMResult},
     managed::value::Value,
 };
-use slotmap::{DefaultKey, HopSlotMap};
+use slotmap::{DefaultKey, HopSlotMap, Key};
 use std::{cell::RefCell, ptr::NonNull, rc::Rc};
 use wasmer::{Instance, WasmerEnv};
 use wasmer_middlewares::metering::{get_remaining_points, set_remaining_points, MeteringPoints};
@@ -70,5 +70,8 @@ impl Context {
                 "instance missing, lifecycle error".to_string(),
             )),
         }
+    }
+    pub fn bump(&self, value: Value) -> u64 {
+        self.arena.as_ref().get_mut().insert(value).data().as_ffi()
     }
 }
