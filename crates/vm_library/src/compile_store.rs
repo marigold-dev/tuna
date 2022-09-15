@@ -16,9 +16,9 @@ pub fn new_compile_store() -> Store {
     let mut features = Features::default();
     // //features.module_linking(true);
     features.multi_value(false);
-    // //features.bulk_memory(true);
-    // // features.reference_types(true);
-    // features.simd(true);
+    features.bulk_memory(false);
+    features.reference_types(false);
+    features.simd(true);
     let runtime = runtime.features(features);
     Store::new(&runtime.engine())
 }

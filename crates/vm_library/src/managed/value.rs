@@ -25,18 +25,17 @@ impl<'a> Serialize for UnionSerializer<'a> {
         S: serde::Serializer,
     {
         use Union::*;
+        let mut for_removal = self.arena.as_ref().borrow_mut();
 
         match self.value {
             Right(x) => {
                 let mut seq = serializer.serialize_tuple(2)?;
 
                 seq.serialize_element("Right")?;
-                let value1 = self
-                    .arena
-                    .as_ref()
-                    .borrow_mut()
+                let value1 = for_removal
                     .remove(*x)
                     .map_or_else(|| Err(serde::ser::Error::custom(&"error serializing")), Ok)?;
+                std::mem::drop(for_removal);
                 seq.serialize_element(&ValueSerializer {
                     arena: Rc::clone(&self.arena),
                     value: value1,
@@ -46,12 +45,11 @@ impl<'a> Serialize for UnionSerializer<'a> {
             Left(x) => {
                 let mut seq = serializer.serialize_tuple(2)?;
                 seq.serialize_element("Left")?;
-                let value1 = self
-                    .arena
-                    .as_ref()
-                    .borrow_mut()
+                let value1 = for_removal
                     .remove(*x)
                     .map_or_else(|| Err(serde::ser::Error::custom(&"error serializing")), Ok)?;
+                std::mem::drop(for_removal);
+
                 seq.serialize_element(&ValueSerializer {
                     arena: Rc::clone(&self.arena),
                     value: value1,
@@ -75,8 +73,6 @@ impl<'de> Visitor<'de> for UnionVisitor {
     where
         A: serde::de::SeqAccess<'de>,
     {
-        let arena = Rc::clone(&self.arena);
-        let structure = WithValueDeser { arena };
         seq.next_element::<&str>()?.map_or_else(
             || {
                 Err(serde::de::Error::invalid_type(
@@ -86,6 +82,10 @@ impl<'de> Visitor<'de> for UnionVisitor {
             },
             |x| match x {
                 "Left" => {
+                    let arena = Rc::clone(&self.arena);
+
+                    let structure = WithValueDeser { arena };
+
                     let elem = seq.next_element_seed::<WithValueDeser>(structure)?;
                     elem.map_or_else(
                         || {
@@ -101,6 +101,8 @@ impl<'de> Visitor<'de> for UnionVisitor {
                     )
                 }
                 "Right" => {
+                    let arena = Rc::clone(&self.arena);
+                    let structure = WithValueDeser { arena };
                     let elem = seq.next_element_seed::<WithValueDeser>(structure)?;
                     elem.map_or_else(
                         || {
@@ -155,7 +157,7 @@ unsafe impl Send for Value {}
 
 #[repr(transparent)]
 #[derive(Clone)]
-struct ValueVisitor {
+pub struct ValueVisitor {
     arena: Rc<RefCell<Arena<Value>>>,
 }
 impl<'de> Visitor<'de> for ValueVisitor {
@@ -385,8 +387,8 @@ impl<'de> Visitor<'de> for ValueVisitor {
     }
 }
 #[derive(Clone)]
-struct WithValueDeser {
-    arena: Rc<RefCell<Arena<Value>>>,
+pub struct WithValueDeser {
+    pub arena: Rc<RefCell<Arena<Value>>>,
 }
 impl<'de> DeserializeSeed<'de> for WithValueDeser {
     type Value = Value;
@@ -518,9 +520,9 @@ impl<'de> Visitor<'de> for ValueVisitorTup {
         Ok(val)
     }
 }
-struct ValueSerializer {
-    arena: Rc<RefCell<Arena<Value>>>,
-    value: Value,
+pub struct ValueSerializer {
+    pub arena: Rc<RefCell<Arena<Value>>>,
+    pub value: Value,
 }
 impl Serialize for ValueSerializer {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
@@ -559,21 +561,22 @@ impl Serialize for ValueSerializer {
             Union(union) => {
                 let mut seq = serializer.serialize_tuple(2)?;
                 seq.serialize_element("Union")?;
-                let serializer = UnionSerializer {
+                let sere = UnionSerializer {
                     arena: Rc::clone(&self.arena),
                     value: union,
                 };
-                seq.serialize_element(&serializer)?;
+                seq.serialize_element(&sere)?;
                 seq.end()
             }
             Map(map) => {
                 let mut seq = serializer.serialize_tuple(2)?;
                 seq.serialize_element("Map")?;
+                let mut arena = self.arena.as_ref().borrow_mut();
                 let serialized = map
                     .iter()
                     .map(|(x, y)| {
-                        let value1 = self.arena.as_ref().borrow_mut().remove(*x)?;
-                        let value2 = self.arena.as_ref().borrow_mut().remove(*y)?;
+                        let value1 = arena.remove(*x)?;
+                        let value2 = arena.remove(*y)?;
                         let tup = (
                             ValueSerializer {
                                 arena: Rc::clone(&self.arena),
@@ -595,11 +598,12 @@ impl Serialize for ValueSerializer {
             Set(set) => {
                 let mut seq = serializer.serialize_tuple(2)?;
                 seq.serialize_element("Set")?;
+                let mut arena = self.arena.as_ref().borrow_mut();
 
                 let serialized: std::option::Option<Vec<ValueSerializer>> = set
                     .iter()
                     .map(|x| {
-                        let value = self.arena.as_ref().borrow_mut().remove(*x)?;
+                        let value = arena.remove(*x)?;
                         let val = ValueSerializer {
                             arena: Rc::clone(&self.arena),
                             value,
@@ -637,37 +641,33 @@ impl Serialize for ValueSerializer {
             }
             Pair { fst, snd } => {
                 let mut seq = serializer.serialize_tuple(3)?;
+                let mut arena = self.arena.as_ref().borrow_mut();
                 seq.serialize_element("Pair")?;
-                let value1 = self
-                    .arena
-                    .as_ref()
-                    .borrow_mut()
+                let value1 = arena
                     .remove(*fst)
                     .map_or_else(|| Err(serde::ser::Error::custom(&"error serializing")), Ok)?;
-                seq.serialize_element(&ValueSerializer {
-                    arena: Rc::clone(&self.arena),
-                    value: value1,
-                })?;
-                let value1 = self
-                    .arena
-                    .as_ref()
-                    .borrow_mut()
+                let value2 = arena
                     .remove(*snd)
                     .map_or_else(|| Err(serde::ser::Error::custom(&"error serializing")), Ok)?;
                 seq.serialize_element(&ValueSerializer {
                     arena: Rc::clone(&self.arena),
                     value: value1,
                 })?;
+
+                seq.serialize_element(&ValueSerializer {
+                    arena: Rc::clone(&self.arena),
+                    value: value2,
+                })?;
                 seq.end()
             }
             List(lst) => {
                 let mut seq = serializer.serialize_tuple(3)?;
                 seq.serialize_element("List")?;
-
+                let mut arena = self.arena.as_ref().borrow_mut();
                 let serialized = lst
                     .iter()
                     .map(|x| {
-                        let value = self.arena.as_ref().borrow_mut().remove(*x)?;
+                        let value = arena.remove(*x)?;
                         Some(ValueSerializer {
                             arena: Rc::clone(&self.arena),
                             value,

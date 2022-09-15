@@ -72,6 +72,11 @@ impl Context {
         }
     }
     pub fn bump(&self, value: Value) -> u64 {
-        self.arena.as_ref().get_mut().insert(value).data().as_ffi()
+        self.arena
+            .as_ref()
+            .borrow_mut()
+            .insert(value)
+            .data()
+            .as_ffi()
     }
 }

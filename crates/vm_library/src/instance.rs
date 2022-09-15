@@ -31,51 +31,50 @@ use wasmer::{Instance, Module, NativeFunc};
 //     called.downcast::<Value>().cloned()
 // }
 
-#[cfg(test)]
-mod test {
-    use bumpalo::{boxed::Box, Bump};
-    use wasmer::{imports, wat2wasm};
-    use wasmer_middlewares::metering::set_remaining_points;
+// #[cfg(test)]
+// mod test {
+//     use wasmer::{imports, wat2wasm};
+//     use wasmer_middlewares::metering::set_remaining_points;
 
-    use crate::compile_store;
+//     use crate::compile_store;
 
-    use super::*;
-    #[test]
-    fn testing() {
-        let expected = 6;
-        let module = wat2wasm(
-            br#"
-            (module
-              (func $main (param $n i64) (result i64)
-                local.get $n
-              )
-            (export "main" (func $main))
-          )
-        "#,
-        )
-        .unwrap();
-        #[derive(PartialEq, Debug)]
-        pub struct T {
-            pub v: String,
-            pub z: Option<Box<'static, T>>,
-        }
-        let ar: Bump = Bump::with_capacity(8000);
-        ar.set_allocation_limit(Some(8000));
-        let vv = Box::new_in(
-            T {
-                v: "String".to_string(),
-                z: None,
-            },
-            &ar,
-        );
-        let to_pass = Box::into_raw(vv) as *mut usize;
-        let store = compile_store::new_compile_store();
-        let module = Module::new(&store, module).unwrap();
-        let imports = imports! {};
-        let result = Instance::new(&module, &imports).unwrap();
-        set_remaining_points(&result, 1000);
-        let main: NativeFunc<i64, i64> = result.exports.get_native_function("main").unwrap();
-        let res = main.call(to_pass as i64).unwrap();
-        assert_eq!(res, to_pass as i64)
-    }
-}
+//     use super::*;
+//     #[test]
+//     fn testing() {
+//         let expected = 6;
+//         let module = wat2wasm(
+//             br#"
+//             (module
+//               (func $main (param $n i64) (result i64)
+//                 local.get $n
+//               )
+//             (export "main" (func $main))
+//           )
+//         "#,
+//         )
+//         .unwrap();
+//         #[derive(PartialEq, Debug)]
+//         pub struct T {
+//             pub v: String,
+//             pub z: Option<Box<'static, T>>,
+//         }
+//         let ar: Bump = Bump::with_capacity(8000);
+//         ar.set_allocation_limit(Some(8000));
+//         let vv = Box::new_in(
+//             T {
+//                 v: "String".to_string(),
+//                 z: None,
+//             },
+//             &ar,
+//         );
+//         let to_pass = Box::into_raw(vv) as *mut usize;
+//         let store = compile_store::new_compile_store();
+//         let module = Module::new(&store, module).unwrap();
+//         let imports = imports! {};
+//         let result = Instance::new(&module, &imports).unwrap();
+//         set_remaining_points(&result, 1000);
+//         let main: NativeFunc<i64, i64> = result.exports.get_native_function("main").unwrap();
+//         let res = main.call(to_pass as i64).unwrap();
+//         assert_eq!(res, to_pass as i64)
+//     }
+// }
