@@ -6,7 +6,7 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-wasmer = {version = "*", features = ["sys-default", "experimental-reference-types-extern-ref"]}
+wasmer = {version = "*", features = ["sys-default"]}
 thiserror = "1.0"
 anyhow = "*"
 serde = { version = "1.0", features = ["derive"] }
@@ -17,5 +17,7 @@ wasmer-engine-universal ="*"
 wasmer-compiler-singlepass = "*"
 blake2 = "*"
 bincode = "*"
-im-rc = {version = "15.1.0", features = ["serde"]}
+im-rc = {version = "15.1.0", features = ["serde", "refpool"]}
 rug = {version = "*", features = ["serde", "integer"]}
+bumpalo = {version = "*", features = ["boxed"]}
+slotmap = "*"

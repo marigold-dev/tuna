@@ -2,15 +2,17 @@ use crate::{
     errors::{vm::VmError, VMResult},
     managed::value::Value,
 };
-use std::ptr::NonNull;
-use wasmer::{ExternRef, Instance, WasmerEnv};
+use slotmap::{DefaultKey, HopSlotMap};
+use std::{cell::RefCell, ptr::NonNull, rc::Rc};
+use wasmer::{Instance, WasmerEnv};
 use wasmer_middlewares::metering::{get_remaining_points, set_remaining_points, MeteringPoints};
 
 #[derive(WasmerEnv, Clone)]
 pub struct Context {
     pub instance: Option<NonNull<Instance>>,
-    pub pusher: Option<NonNull<wasmer::NativeFunc<ExternRef, ()>>>,
+    pub pusher: Option<NonNull<wasmer::NativeFunc<i64, ()>>>,
     pub gas_limit: u64,
+    pub arena: Rc<RefCell<HopSlotMap<DefaultKey, Value>>>,
 }
 unsafe impl Send for Context {}
 
@@ -57,11 +59,11 @@ impl Context {
             Ok(())
         }
     }
-    pub fn push_value(&self, value: Value) -> VMResult<()> {
+    pub fn push_value(&self, value: i64) -> VMResult<()> {
         match self.pusher {
             Some(instance_ptr) => {
                 let func = unsafe { instance_ptr.as_ref() };
-                func.call(ExternRef::new(value))
+                func.call(value)
                     .map_err(|x| VmError::RuntimeErr(x.to_string()))
             }
             None => Err(VmError::InstantiationErr(

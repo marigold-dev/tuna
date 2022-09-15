@@ -596,6 +596,7 @@ dependencies = [
  "bitmaps",
  "rand_core",
  "rand_xoshiro",
+ "refpool",
  "serde",
  "sized-chunks",
  "typenum",
@@ -925,6 +926,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "refpool"
+version = "0.4.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "369e86b80fa7dc8c561dd9613a5bf25c59d2d3073cd66c47fd9e39802f0ecb58"
+
+[[package]]
 name = "regalloc"
 version = "0.0.34"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1117,6 +1124,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "slotmap"
+version = "1.0.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e1e08e261d0e8f5c43123b7adf3e4ca1690d655377ac93a03b2c9d3e98de1342"
+dependencies = [
+ "version_check",
+]
+
+[[package]]
 name = "smallvec"
 version = "1.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1267,11 +1283,13 @@ dependencies = [
  "anyhow",
  "bincode",
  "blake2",
+ "bumpalo",
  "im-rc",
  "rug",
  "serde",
  "serde_json",
  "serde_with",
+ "slotmap",
  "thiserror",
  "wasmer",
  "wasmer-compiler-singlepass",

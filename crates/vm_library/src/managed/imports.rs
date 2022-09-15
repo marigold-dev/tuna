@@ -1,4 +1,4 @@
-use std::ops::Add;
+use std::{ops::Add, rc::Rc, sync::Arc};
 
 use rug::Integer;
 use wasmer::{Exports, ExternRef, Function, ImportObject, Store};
@@ -11,7 +11,7 @@ use crate::{
 use super::value::*;
 pub fn compare(env: &Context, value1: &Value, value2: &Value) -> VMResult<ExternRef> {
     env.update_gas(300)?;
-    let cmp_res = value1.cmp(value2) as i8;
+    let cmp_res = (*value1).cmp(value2) as i8;
     Ok(ExternRef::new(Value::Int(cmp_res.into())))
 }
 pub fn equal(env: &Context, value1: &Value, value2: &Value) -> VMResult<ExternRef> {
@@ -56,7 +56,7 @@ pub fn not(env: &Context, value: &Value) -> VMResult<ExternRef> {
         Value::Bool(false) => Ok(ExternRef::new(Value::Bool(true))),
         Value::Bool(true) => Ok(ExternRef::new(Value::Bool(false))),
         _ => Err(FFIError::ExternError {
-            value: (*value).clone(),
+            value: value.clone(),
             msg: "type mismatch, expected Pair".to_string(),
         }
         .into()),
@@ -64,7 +64,7 @@ pub fn not(env: &Context, value: &Value) -> VMResult<ExternRef> {
 }
 pub fn pair(env: &Context, value1: &Value, value2: &Value) -> VMResult<ExternRef> {
     env.update_gas(300)?;
-    let res = Value::Pair(Box::new(((*value1).clone(), (*value2).clone())));
+    let res = Value::Pair(Box::new((value1.clone(), value2.clone())));
     Ok(ExternRef::new(res))
 }
 pub fn unpair(env: &Context, value: &Value) -> VMResult<(ExternRef, ExternRef)> {
@@ -311,6 +311,7 @@ where
         _ => Err(VmError::RuntimeErr("illegal argument".to_string())),
     }
 }
+
 pub const fn call2_extra<F, A>(f: F) -> impl Fn(&Context, u32, ExternRef) -> VMResult<A>
 where
     F: Fn(&Context, u32, &Value) -> VMResult<A>,

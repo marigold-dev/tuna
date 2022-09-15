@@ -9,17 +9,16 @@ pub fn cost_fn(_operator: &Operator) -> u64 {
     100
 }
 pub fn new_compile_store() -> Store {
-    let metering = Arc::new(Metering::new(1, cost_fn));
+    let metering = Arc::new(Metering::new(0, cost_fn));
     let mut compiler_config = Singlepass::default();
     compiler_config.push_middleware(metering);
     let runtime = Universal::new(compiler_config);
     let mut features = Features::default();
-    features.module_linking(true);
-    features.multi_value(true);
-    features.bulk_memory(true);
-    features.multi_value(true);
-    features.reference_types(true);
-    features.simd(true);
+    // //features.module_linking(true);
+    features.multi_value(false);
+    // //features.bulk_memory(true);
+    // // features.reference_types(true);
+    // features.simd(true);
     let runtime = runtime.features(features);
     Store::new(&runtime.engine())
 }
