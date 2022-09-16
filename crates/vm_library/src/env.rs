@@ -79,4 +79,11 @@ impl Context {
             .data()
             .as_ffi()
     }
+    pub fn get(&self, value: DefaultKey) -> VMResult<Value> {
+        self.arena
+            .as_ref()
+            .borrow_mut()
+            .remove(value)
+            .map_or_else(|| Err(VmError::RuntimeErr("Value doesnt exist".into())), Ok)
+    }
 }
