@@ -6,6 +6,7 @@ pub struct Incoming {
     pub source: String,
     pub sender: String,
     pub self_addr: String,
+    pub gas_limit: usize,
 }
 
 use std::{cell::RefCell, fmt, rc::Rc};
@@ -37,6 +38,7 @@ impl<'de> DeserializeSeed<'de> for VV {
             Source,
             Sender,
             SelfAddr,
+            GasLimit,
         }
 
         impl<'de> Deserialize<'de> for Field {
@@ -66,6 +68,7 @@ impl<'de> DeserializeSeed<'de> for VV {
                             "source" => Ok(Field::Source),
                             "sender" => Ok(Field::Sender),
                             "self_address" => Ok(Field::SelfAddr),
+                            "gas_limit" => Ok(Field::GasLimit),
 
                             _ => Err(de::Error::unknown_field(value, FIELDS)),
                         }
@@ -109,13 +112,16 @@ impl<'de> DeserializeSeed<'de> for VV {
                 let tickets = seq
                     .next_element()?
                     .ok_or_else(|| de::Error::invalid_length(0, &self))?;
-                let sender = seq
-                    .next_element()?
-                    .ok_or_else(|| de::Error::invalid_length(0, &self))?;
                 let source = seq
                     .next_element()?
                     .ok_or_else(|| de::Error::invalid_length(0, &self))?;
+                let sender = seq
+                    .next_element()?
+                    .ok_or_else(|| de::Error::invalid_length(0, &self))?;
                 let self_addr = seq
+                    .next_element()?
+                    .ok_or_else(|| de::Error::invalid_length(0, &self))?;
+                let gas_limit = seq
                     .next_element()?
                     .ok_or_else(|| de::Error::invalid_length(0, &self))?;
                 Ok(Incoming {
@@ -126,6 +132,7 @@ impl<'de> DeserializeSeed<'de> for VV {
                     sender,
                     source,
                     self_addr,
+                    gas_limit,
                 })
             }
 
@@ -140,6 +147,8 @@ impl<'de> DeserializeSeed<'de> for VV {
                 let mut sender = None;
                 let mut source = None;
                 let mut self_addr = None;
+                let mut gas_limit = None;
+
                 while let Some(key) = map.next_key()? {
                     match key {
                         Field::MOD_ => {
@@ -164,11 +173,11 @@ impl<'de> DeserializeSeed<'de> for VV {
                                 arena: Rc::clone(&self.arena),
                             })?);
                         }
-                        Field::Sender => {
-                            if sender.is_some() {
+                        Field::Tickets => {
+                            if tickets.is_some() {
                                 return Err(de::Error::duplicate_field("secs"));
                             }
-                            sender = Some(map.next_value()?);
+                            tickets = Some(map.next_value()?);
                         }
                         Field::Source => {
                             if source.is_some() {
@@ -176,17 +185,24 @@ impl<'de> DeserializeSeed<'de> for VV {
                             }
                             source = Some(map.next_value()?);
                         }
+                        Field::Sender => {
+                            if sender.is_some() {
+                                return Err(de::Error::duplicate_field("secs"));
+                            }
+                            sender = Some(map.next_value()?);
+                        }
                         Field::SelfAddr => {
                             if self_addr.is_some() {
                                 return Err(de::Error::duplicate_field("secs"));
                             }
                             self_addr = Some(map.next_value()?);
                         }
-                        Field::Tickets => {
-                            if tickets.is_some() {
+
+                        Field::GasLimit => {
+                            if gas_limit.is_some() {
                                 return Err(de::Error::duplicate_field("secs"));
                             }
-                            tickets = Some(map.next_value()?);
+                            gas_limit = Some(map.next_value()?);
                         }
                     }
                 }
@@ -201,6 +217,7 @@ impl<'de> DeserializeSeed<'de> for VV {
                 let mut arena = self.arena.as_ref().borrow_mut();
                 let initial_storage = arena.insert(initial_storage);
                 let arg = arena.insert(arg);
+                let gas_limit = gas_limit.ok_or_else(|| de::Error::missing_field("nanos"))?;
 
                 Ok(Incoming {
                     mod_,
@@ -210,6 +227,7 @@ impl<'de> DeserializeSeed<'de> for VV {
                     sender,
                     source,
                     tickets,
+                    gas_limit,
                 })
             }
         }
