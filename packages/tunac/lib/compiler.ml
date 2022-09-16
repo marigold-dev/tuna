@@ -11,6 +11,7 @@ let gen_symbol name =
 let constant_count = ref 0
 let constants = ref []
 
+let lambda_count = ref 0
 let lambdas = ref []
 
 let compile_constant value =
@@ -28,7 +29,7 @@ let rec compile_instruction instruction =
     "(call $push (call $pair (call $pop) (call $pop)))"
 
   | Prim (_, I_ADD, _, _) ->
-    "(call $push (call $add (call $pop) (call $pop)))"
+    "(call $push (call $z_add (call $pop) (call $pop)))"
 
   | Prim (_, I_AMOUNT, _, _) ->
     "(call $push (call $amount))"
@@ -203,7 +204,7 @@ let rec compile_instruction instruction =
     "(call $push (call $source))"
 
   | Prim (_, I_SUB, _, _) ->
-    "(call $push (call $sub (call $pop) (call $pop)))"
+    "(call $push (call $z_sub (call $pop) (call $pop)))"
 
   | Prim (_, I_SWAP, _, _) ->
     "(call $swap)"
@@ -317,24 +318,28 @@ let rec compile_instruction instruction =
   | Prim (_, I_ITER, [ Seq (_, body) ], _) ->
     let name = gen_symbol "$iter_lambda" in
     let lambda = compile_lambda name body in
-    lambdas := lambda :: !lambdas;
     Printf.sprintf
-      "(call $push (call $iter (call $pop) (ref.fun %s)))"
+      "(call $push (call $iter (call $pop) (table.get $closures (i32.const %d) (; %s ;) )))"
+      lambda
       name
 
   | Prim (_, I_MAP, [ Seq (_, body) ], _) ->
     let name = gen_symbol "$map_lambda" in
     let lambda = compile_lambda name body in
-    lambdas := lambda :: !lambdas;
     Printf.sprintf
-      "(call $push (call $map (call $pop) (ref.fun %s)))"
+      "(call $push (call $map (call $pop) (table.get $closures (i32.const %d) (; %s ;) )))"
+      lambda
       name
 
   | Prim (_, I_PUSH, [ _; Int (_, z) ], _) ->
-    compile_constant (Values.Int z)
+    Printf.sprintf "%s (; %s ;)"
+      (compile_constant (Values.Int z))
+      (Z.to_string z)
 
   | Prim (_, I_PUSH, [ _; String (_, s) ], _) ->
-    compile_constant (Values.String s)
+    Printf.sprintf "%s (; \"%s\" ;)"
+      (compile_constant (Values.String s))
+      s
 
   | Prim (_, I_PUSH, [ _; Bytes (_, b) ], _) ->
     compile_constant (Values.Bytes b)
@@ -342,8 +347,7 @@ let rec compile_instruction instruction =
   | Prim (_, I_LAMBDA, [ _; _; Seq (_, body) ], _) ->
     let name = gen_symbol "$lambda" in
     let lambda = compile_lambda name body in
-    lambdas := lambda :: !lambdas;
-    Printf.sprintf "(call $push (ref.func %s))" name
+    Printf.sprintf "(call $push (call $closure (i32.const %d) (; %s ;) ))" lambda name
 
   | Prim (_, prim, _, _) ->
     failwith ("Unsupported primitive " ^ (Michelson_primitives.string_of_prim prim))
@@ -356,10 +360,16 @@ and compile_lambda name body =
     |> List.map compile_instruction
     |> String.concat "\n"
   in
-  Printf.sprintf
-    "(func %s (local $1 externref) %s)"
-    name
-    body
+  let lambda =
+    Printf.sprintf
+      "(func %s (local $1 i64) %s)"
+      name
+      body
+  in
+  let id = !lambda_count in
+  incr lambda_count;
+  lambdas := (id, name, lambda) :: !lambdas;
+  id
 
 let compile code =
   let parsed =
@@ -378,7 +388,17 @@ let compile code =
       |> List.map compile_instruction
       |> String.concat "\n"
     in
-    let b = Printf.sprintf "(local $1 externref) %s" body in
-    let lambdas = String.concat "\n" !lambdas in
-    Template.base lambdas (fun fmt b -> Format.pp_print_string fmt b) b
+    let lambda_code =
+      !lambdas
+      |> List.map (fun (_, _, x) -> x)
+      |> String.concat "\n"
+    in
+    let lambda_table =
+      !lambdas
+      |> List.map (fun (_, name, _) -> name)
+      |> String.concat " "
+      |> Printf.sprintf
+          "(table $closures funcref (elem %s))\n"
+    in
+    Template.base (lambda_table ^ lambda_code) (fun fmt b -> Format.pp_print_string fmt b) body, Array.of_list !constants
   | _ -> assert false

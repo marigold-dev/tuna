@@ -6,7 +6,10 @@ let read_file name =
   Bytes.to_string @@ Bytes.sub buf 0 size
 
 let () =
-  Sys.argv.(1)
-  |> read_file
-  |> Tunac.Compiler.compile
-  |> print_endline
+  let wat, constants =
+    Sys.argv.(1)
+    |> read_file
+    |> Tunac.Compiler.compile
+  in
+  let _ = Tunac.Output.make wat constants in
+  print_endline wat

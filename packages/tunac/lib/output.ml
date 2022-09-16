@@ -16,6 +16,6 @@ let make m constants =
       Ok { module_ = m; constants }
     | Encoded _ | Quoted _ -> Error `Invalid_module
   with Wasm.Parse.Syntax (at, msg) | Wasm.Valid.Invalid (at, msg) ->
-    Format.printf "Module validation error at %d:%d - %d:%d: %s" at.left.line
+    Format.eprintf "Module validation error at %d:%d - %d:%d: %s" at.left.line
       at.left.column at.right.line at.right.column msg;
     Error `Module_validation_error
