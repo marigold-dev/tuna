@@ -1,5 +1,9 @@
 module Error : sig
-  type t [@@deriving show, yojson]
+  type t =
+    [ `Out_of_gas
+    | `Type_error
+    ]
+  [@@deriving show, yojson]
 end
 
 module rec Value : sig
@@ -59,5 +63,8 @@ module InvocationResult : sig
 end
 
 module Vm : sig
-  val invoke : InvocationPayload.t -> (InvocationResult.t, Error.t) result Lwt.t
+  val invoke :
+       InvocationPayload.t
+    -> get_contract_opt:(string -> string)
+    -> (InvocationResult.t, Error.t) result Lwt.t
 end

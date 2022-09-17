@@ -1,13 +1,7 @@
-use std::{cell::RefCell, marker::PhantomData, rc::Rc};
-
+use crate::arena::ARENA;
 use im_rc::{OrdMap, OrdSet, Vector};
-use serde::{
-    de::{DeserializeSeed, Visitor},
-    ser::SerializeTuple,
-    Serialize,
-};
-use slotmap::{DefaultKey, HopSlotMap};
-type Arena<A> = HopSlotMap<DefaultKey, A>;
+use serde::{de::Visitor, ser::SerializeTuple, Deserialize, Serialize};
+use slotmap::DefaultKey;
 #[derive(Debug, PartialEq, PartialOrd, Eq, Ord, Clone)]
 pub enum Union {
     Left(DefaultKey),
@@ -15,54 +9,39 @@ pub enum Union {
 }
 unsafe impl Sync for Union {}
 unsafe impl Send for Union {}
-struct UnionSerializer<'a> {
-    arena: Rc<RefCell<Arena<Value>>>,
-    value: &'a Union,
-}
-impl<'a> Serialize for UnionSerializer<'a> {
+impl Serialize for Union {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: serde::Serializer,
     {
         use Union::*;
-        let mut for_removal = self.arena.as_ref().borrow_mut();
+        let for_removal = unsafe { &ARENA };
 
-        match self.value {
+        match self {
             Right(x) => {
                 let mut seq = serializer.serialize_tuple(2)?;
 
                 seq.serialize_element("Right")?;
                 let value1 = for_removal
-                    .remove(*x)
+                    .get(*x)
                     .map_or_else(|| Err(serde::ser::Error::custom(&"error serializing")), Ok)?;
-                std::mem::drop(for_removal);
-                seq.serialize_element(&ValueSerializer {
-                    arena: Rc::clone(&self.arena),
-                    value: value1,
-                })?;
+                seq.serialize_element(value1)?;
                 seq.end()
             }
             Left(x) => {
                 let mut seq = serializer.serialize_tuple(2)?;
                 seq.serialize_element("Left")?;
                 let value1 = for_removal
-                    .remove(*x)
+                    .get(*x)
                     .map_or_else(|| Err(serde::ser::Error::custom(&"error serializing")), Ok)?;
-                std::mem::drop(for_removal);
 
-                seq.serialize_element(&ValueSerializer {
-                    arena: Rc::clone(&self.arena),
-                    value: value1,
-                })?;
+                seq.serialize_element(value1)?;
                 seq.end()
             }
         }
     }
 }
-#[derive(Clone)]
-struct UnionVisitor {
-    arena: Rc<RefCell<Arena<Value>>>,
-}
+struct UnionVisitor;
 impl<'de> Visitor<'de> for UnionVisitor {
     type Value = Union;
 
@@ -73,6 +52,8 @@ impl<'de> Visitor<'de> for UnionVisitor {
     where
         A: serde::de::SeqAccess<'de>,
     {
+        let arena = unsafe { &mut ARENA };
+
         seq.next_element::<&str>()?.map_or_else(
             || {
                 Err(serde::de::Error::invalid_type(
@@ -82,11 +63,7 @@ impl<'de> Visitor<'de> for UnionVisitor {
             },
             |x| match x {
                 "Left" => {
-                    let arena = Rc::clone(&self.arena);
-
-                    let structure = WithValueDeser { arena };
-
-                    let elem = seq.next_element_seed::<WithValueDeser>(structure)?;
+                    let elem = seq.next_element::<Value>()?;
                     elem.map_or_else(
                         || {
                             Err(serde::de::Error::invalid_type(
@@ -95,15 +72,13 @@ impl<'de> Visitor<'de> for UnionVisitor {
                             ))
                         },
                         |x| {
-                            let inserted = self.arena.as_ref().borrow_mut().insert(x);
+                            let inserted = arena.insert(x);
                             Ok(Union::Left(inserted))
                         },
                     )
                 }
                 "Right" => {
-                    let arena = Rc::clone(&self.arena);
-                    let structure = WithValueDeser { arena };
-                    let elem = seq.next_element_seed::<WithValueDeser>(structure)?;
+                    let elem = seq.next_element::<Value>()?;
                     elem.map_or_else(
                         || {
                             Err(serde::de::Error::invalid_type(
@@ -112,7 +87,7 @@ impl<'de> Visitor<'de> for UnionVisitor {
                             ))
                         },
                         |x| {
-                            let inserted = self.arena.as_ref().borrow_mut().insert(x);
+                            let inserted = arena.insert(x);
                             Ok(Union::Right(inserted))
                         },
                     )
@@ -125,16 +100,12 @@ impl<'de> Visitor<'de> for UnionVisitor {
         )
     }
 }
-struct WithUnionDeser {
-    arena: Rc<RefCell<Arena<Value>>>,
-}
-impl<'de> DeserializeSeed<'de> for WithUnionDeser {
-    type Value = Union;
-    fn deserialize<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
+impl<'de> Deserialize<'de> for Union {
+    fn deserialize<D>(deserializer: D) -> Result<Union, D::Error>
     where
         D: serde::Deserializer<'de>,
     {
-        deserializer.deserialize_tuple(2, UnionVisitor { arena: self.arena })
+        deserializer.deserialize_tuple(2, UnionVisitor)
     }
 }
 #[derive(Debug, PartialEq, PartialOrd, Eq, Ord, Clone)]
@@ -157,9 +128,7 @@ unsafe impl Send for Value {}
 
 #[repr(transparent)]
 #[derive(Clone)]
-pub struct ValueVisitor {
-    arena: Rc<RefCell<Arena<Value>>>,
-}
+pub struct ValueVisitor;
 impl<'de> Visitor<'de> for ValueVisitor {
     type Value = Value;
     fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -169,6 +138,7 @@ impl<'de> Visitor<'de> for ValueVisitor {
     where
         A: serde::de::SeqAccess<'de>,
     {
+        let arena = unsafe { &mut ARENA };
         seq.next_element::<&str>()?.map_or_else(
             || {
                 Err(serde::de::Error::invalid_type(
@@ -232,8 +202,7 @@ impl<'de> Visitor<'de> for ValueVisitor {
                     )
                 }
                 "Union" => {
-                    let union_deser = WithUnionDeser { arena: self.arena };
-                    let elem = seq.next_element_seed::<WithUnionDeser>(union_deser)?;
+                    let elem = seq.next_element::<Union>()?;
                     elem.map_or_else(
                         || {
                             Err(serde::de::Error::invalid_type(
@@ -245,11 +214,7 @@ impl<'de> Visitor<'de> for ValueVisitor {
                     )
                 }
                 "List" => {
-                    let structure = WithValueDeserSeq {
-                        visitor: ValueVisitorSeq { arena: self.arena },
-                        _p: PhantomData,
-                    };
-                    let elem = seq.next_element_seed(structure)?;
+                    let elem = seq.next_element::<Vector<Value>>()?;
                     elem.map_or_else(
                         || {
                             Err(serde::de::Error::invalid_type(
@@ -257,16 +222,15 @@ impl<'de> Visitor<'de> for ValueVisitor {
                                 &"Value enum",
                             ))
                         },
-                        |x| Ok(Value::List(Vector::from(x))),
+                        |x| {
+                            Ok(Value::List(
+                                x.into_iter().map(|x| arena.insert(x)).collect(),
+                            ))
+                        },
                     )
                 }
                 "Map" => {
-                    let elem = seq.next_element_seed(WithValueDeserSeq {
-                        visitor: ValueVisitorTup {
-                            arena: Rc::clone(&self.arena),
-                        },
-                        _p: PhantomData,
-                    })?;
+                    let elem = seq.next_element::<Vec<(Value, Value)>>()?;
                     elem.map_or_else(
                         || {
                             Err(serde::de::Error::invalid_type(
@@ -274,15 +238,17 @@ impl<'de> Visitor<'de> for ValueVisitor {
                                 &"Value enum",
                             ))
                         },
-                        |elem| Ok(Value::Map(OrdMap::from(elem))),
+                        |elem| {
+                            Ok(Value::Map(OrdMap::from(
+                                elem.into_iter()
+                                    .map(|(k, v)| (arena.insert(k), arena.insert(v)))
+                                    .collect::<Vec<(DefaultKey, DefaultKey)>>(),
+                            )))
+                        },
                     )
                 }
                 "Set" => {
-                    let structure = WithValueDeserSeq {
-                        visitor: ValueVisitorSeq { arena: self.arena },
-                        _p: PhantomData,
-                    };
-                    let elem = seq.next_element_seed(structure)?;
+                    let elem = seq.next_element::<Vec<Value>>()?;
                     elem.map_or_else(
                         || {
                             Err(serde::de::Error::invalid_type(
@@ -290,69 +256,36 @@ impl<'de> Visitor<'de> for ValueVisitor {
                                 &"Value enum",
                             ))
                         },
-                        |x| Ok(Value::Set(OrdSet::from(x))),
+                        |x| {
+                            Ok(Value::Set(OrdSet::from(
+                                x.into_iter()
+                                    .map(|x| arena.insert(x))
+                                    .collect::<Vec<DefaultKey>>(),
+                            )))
+                        },
                     )
                 }
                 "Pair" => {
-                    let elem1 = seq.next_element::<&str>()?;
-                    let elem1 = elem1.map_or_else(
+                    let elem1 = seq.next_element::<[Value; 2]>()?;
+                    elem1.map_or_else(
                         || {
                             Err(serde::de::Error::invalid_type(
                                 serde::de::Unexpected::Str("unexpected sequence"),
                                 &self,
                             ))
                         },
-                        |x| {
-                            let structure = WithValueDeser {
-                                arena: Rc::clone(&self.arena),
+                        |[value1, value2]| {
+                            let res = Value::Pair {
+                                fst: arena.insert(value1),
+                                snd: arena.insert(value2),
                             };
-                            let mut deser = serde_json::Deserializer::from_str(x);
-                            let elem = structure.deserialize(&mut deser);
-                            let elem = elem
-                                .map_err(|_| {
-                                    serde::de::Error::invalid_type(
-                                        serde::de::Unexpected::Str("unexpected sequence"),
-                                        &"value",
-                                    )
-                                })
-                                .map(|x| self.arena.as_ref().borrow_mut().insert(x))?;
-                            Ok(elem)
+                            Ok(res)
                         },
-                    )?;
-                    let elem2 = seq.next_element::<&str>()?;
-                    let elem2 = elem2.map_or_else(
-                        || {
-                            Err(serde::de::Error::invalid_type(
-                                serde::de::Unexpected::Str("unexpected sequence"),
-                                &"value",
-                            ))
-                        },
-                        |x| {
-                            let structure = WithValueDeser {
-                                arena: Rc::clone(&self.arena),
-                            };
-                            let mut deser = serde_json::Deserializer::from_str(x);
-                            let elem = structure.deserialize(&mut deser);
-                            let elem = elem
-                                .map_err(|_| {
-                                    serde::de::Error::invalid_type(
-                                        serde::de::Unexpected::Str("unexpected sequence"),
-                                        &"value",
-                                    )
-                                })
-                                .map(|x| self.arena.as_ref().borrow_mut().insert(x))?;
-                            Ok(elem)
-                        },
-                    )?;
-
-                    Ok(Value::Pair {
-                        fst: elem1,
-                        snd: elem2,
-                    })
+                    )
                 }
 
                 "Option" => {
-                    let elem = seq.next_element::<&str>()?;
+                    let elem = seq.next_element::<Option<Value>>()?;
                     elem.map_or_else(
                         || {
                             Err(serde::de::Error::invalid_type(
@@ -361,20 +294,8 @@ impl<'de> Visitor<'de> for ValueVisitor {
                             ))
                         },
                         |x| {
-                            let structure = WithValueDeser {
-                                arena: Rc::clone(&self.arena),
-                            };
-                            let mut deser = serde_json::Deserializer::from_str(x);
-                            let elem = structure.deserialize(&mut deser);
-                            let elem = elem
-                                .map_err(|_| {
-                                    serde::de::Error::invalid_type(
-                                        serde::de::Unexpected::Str("unexpected sequence"),
-                                        &"value",
-                                    )
-                                })
-                                .map(|x| self.arena.as_ref().borrow_mut().insert(x))?;
-                            Ok(Value::Option(Some(elem)))
+                            let x = x.map(|x| arena.insert(x));
+                            Ok(Value::Option(x))
                         },
                     )
                 }
@@ -386,151 +307,23 @@ impl<'de> Visitor<'de> for ValueVisitor {
         )
     }
 }
-#[derive(Clone)]
-pub struct WithValueDeser {
-    pub arena: Rc<RefCell<Arena<Value>>>,
-}
-impl<'de> DeserializeSeed<'de> for WithValueDeser {
-    type Value = Value;
-    fn deserialize<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
+impl<'de> Deserialize<'de> for Value {
+    fn deserialize<D>(deserializer: D) -> Result<Value, D::Error>
     where
         D: serde::Deserializer<'de>,
     {
-        deserializer.deserialize_tuple(2, ValueVisitor { arena: self.arena })
+        deserializer.deserialize_tuple(2, ValueVisitor)
     }
 }
 
-#[derive(Clone)]
-struct ValueVisitorSeq {
-    arena: Rc<RefCell<Arena<Value>>>,
-}
-impl<'de> Visitor<'de> for ValueVisitorSeq {
-    type Value = Vec<DefaultKey>;
-    fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
-        formatter.write_str("Expected a valid Value")
-    }
-    fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
-    where
-        A: serde::de::SeqAccess<'de>,
-    {
-        let mut val = Vec::with_capacity(30);
-        loop {
-            let next = seq.next_element_seed(WithValueDeser {
-                arena: Rc::clone(&self.arena),
-            });
-            if let Ok(x) = next {
-                if x.is_none() {
-                    break;
-                }
-                x.map_or_else(
-                    || {
-                        Err(serde::de::Error::invalid_type(
-                            serde::de::Unexpected::Str("unexpected sequence"),
-                            &"value",
-                        ))
-                    },
-                    |x| {
-                        let key = self.arena.as_ref().borrow_mut().insert(x);
-                        val.push(key);
-                        Ok(())
-                    },
-                )?;
-            } else {
-                return Err(serde::de::Error::invalid_type(
-                    serde::de::Unexpected::Str("unexpected sequence"),
-                    &"value",
-                ));
-            }
-        }
-        Ok(val)
-    }
-}
-#[derive(Clone)]
-struct WithValueDeserSeq<'a, T: Visitor<'a> + 'a> {
-    visitor: T,
-    _p: PhantomData<&'a T>,
-}
-impl<'de, T: Visitor<'de>> DeserializeSeed<'de> for WithValueDeserSeq<'de, T> {
-    type Value = T::Value;
-    fn deserialize<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
-    where
-        D: serde::Deserializer<'de>,
-    {
-        deserializer.deserialize_seq(self.visitor)
-    }
-}
-#[derive(Clone)]
-struct WithValueDeserTup {
-    arena: Rc<RefCell<Arena<Value>>>,
-}
-impl<'de> DeserializeSeed<'de> for WithValueDeserTup {
-    type Value = Vec<(DefaultKey, DefaultKey)>;
-    fn deserialize<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
-    where
-        D: serde::Deserializer<'de>,
-    {
-        deserializer.deserialize_seq(ValueVisitorTup { arena: self.arena })
-    }
-}
-#[derive(Clone)]
-struct ValueVisitorTup {
-    arena: Rc<RefCell<Arena<Value>>>,
-}
-impl<'de> Visitor<'de> for ValueVisitorTup {
-    type Value = Vec<(DefaultKey, DefaultKey)>;
-    fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
-        formatter.write_str("Expected a valid Value")
-    }
-    fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
-    where
-        A: serde::de::SeqAccess<'de>,
-    {
-        let mut val = Vec::with_capacity(1);
-        loop {
-            let next = seq.next_element_seed(WithValueDeserSeq {
-                visitor: ValueVisitorSeq {
-                    arena: Rc::clone(&self.arena),
-                },
-                _p: PhantomData,
-            });
-            if let Ok(x) = next {
-                if x.is_none() {
-                    break;
-                }
-                x.map_or_else(
-                    || {
-                        Err(serde::de::Error::invalid_type(
-                            serde::de::Unexpected::Str("unexpected sequence"),
-                            &"value",
-                        ))
-                    },
-                    |x| {
-                        val.push((x[0], x[1]));
-                        Ok(())
-                    },
-                )?;
-            } else {
-                return Err(serde::de::Error::invalid_type(
-                    serde::de::Unexpected::Str("unexpected sequence"),
-                    &"value",
-                ));
-            }
-        }
-
-        Ok(val)
-    }
-}
-pub struct ValueSerializer {
-    pub arena: Rc<RefCell<Arena<Value>>>,
-    pub value: Value,
-}
-impl Serialize for ValueSerializer {
+impl Serialize for Value {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: serde::Serializer,
     {
         use Value::*;
-        match &self.value {
+        let arena = unsafe { &mut ARENA };
+        match self {
             Int(x) => {
                 let mut seq = serializer.serialize_tuple(2)?;
                 seq.serialize_element("Int")?;
@@ -561,35 +354,19 @@ impl Serialize for ValueSerializer {
             Union(union) => {
                 let mut seq = serializer.serialize_tuple(2)?;
                 seq.serialize_element("Union")?;
-                let sere = UnionSerializer {
-                    arena: Rc::clone(&self.arena),
-                    value: union,
-                };
-                seq.serialize_element(&sere)?;
+                seq.serialize_element(&union)?;
                 seq.end()
             }
             Map(map) => {
                 let mut seq = serializer.serialize_tuple(2)?;
                 seq.serialize_element("Map")?;
-                let mut arena = self.arena.as_ref().borrow_mut();
                 let serialized = map
-                    .iter()
+                    .into_iter()
                     .map(|(x, y)| {
-                        let value1 = arena.remove(*x)?;
-                        let value2 = arena.remove(*y)?;
-                        let tup = (
-                            ValueSerializer {
-                                arena: Rc::clone(&self.arena),
-                                value: value1,
-                            },
-                            ValueSerializer {
-                                arena: Rc::clone(&self.arena),
-                                value: value2,
-                            },
-                        );
+                        let tup = (arena.get(*x)?, arena.get(*y)?);
                         Some(tup)
                     })
-                    .collect::<std::option::Option<Vec<(ValueSerializer, ValueSerializer)>>>();
+                    .collect::<std::option::Option<Vec<(&Value, &Value)>>>();
                 let serialized = serialized
                     .map_or_else(|| Err(serde::ser::Error::custom(&"error serializing")), Ok)?;
                 seq.serialize_element(&serialized)?;
@@ -598,19 +375,9 @@ impl Serialize for ValueSerializer {
             Set(set) => {
                 let mut seq = serializer.serialize_tuple(2)?;
                 seq.serialize_element("Set")?;
-                let mut arena = self.arena.as_ref().borrow_mut();
 
-                let serialized: std::option::Option<Vec<ValueSerializer>> = set
-                    .iter()
-                    .map(|x| {
-                        let value = arena.remove(*x)?;
-                        let val = ValueSerializer {
-                            arena: Rc::clone(&self.arena),
-                            value,
-                        };
-                        Some(val)
-                    })
-                    .collect();
+                let serialized: std::option::Option<Vec<&Value>> =
+                    set.into_iter().map(|x| arena.get(*x)).collect();
                 let serialized = serialized
                     .map_or_else(|| Err(serde::ser::Error::custom(&"error serializing")), Ok)?;
                 seq.serialize_element(&serialized)?;
@@ -624,59 +391,34 @@ impl Serialize for ValueSerializer {
             Option(opt) => {
                 let mut seq = serializer.serialize_tuple(2)?;
                 seq.serialize_element("Option")?;
-                match opt.map(|x| {
-                    self.arena
-                        .as_ref()
-                        .borrow_mut()
-                        .remove(x)
-                        .map(|x| ValueSerializer {
-                            arena: Rc::clone(&self.arena),
-                            value: x,
-                        })
-                }) {
-                    Some(x) => seq.serialize_element(&x)?,
-                    None => seq.serialize_element(&None::<&ValueSerializer>)?,
-                };
+                seq.serialize_element(&opt.map(|x| arena.get(x)))?;
                 seq.end()
             }
             Pair { fst, snd } => {
                 let mut seq = serializer.serialize_tuple(3)?;
-                let mut arena = self.arena.as_ref().borrow_mut();
                 seq.serialize_element("Pair")?;
                 let value1 = arena
-                    .remove(*fst)
+                    .get(*fst)
                     .map_or_else(|| Err(serde::ser::Error::custom(&"error serializing")), Ok)?;
                 let value2 = arena
-                    .remove(*snd)
+                    .get(*snd)
                     .map_or_else(|| Err(serde::ser::Error::custom(&"error serializing")), Ok)?;
-                seq.serialize_element(&ValueSerializer {
-                    arena: Rc::clone(&self.arena),
-                    value: value1,
-                })?;
+                seq.serialize_element(value1)?;
 
-                seq.serialize_element(&ValueSerializer {
-                    arena: Rc::clone(&self.arena),
-                    value: value2,
-                })?;
+                seq.serialize_element(value2)?;
                 seq.end()
             }
             List(lst) => {
                 let mut seq = serializer.serialize_tuple(3)?;
                 seq.serialize_element("List")?;
-                let mut arena = self.arena.as_ref().borrow_mut();
                 let serialized = lst
-                    .iter()
-                    .map(|x| {
-                        let value = arena.remove(*x)?;
-                        Some(ValueSerializer {
-                            arena: Rc::clone(&self.arena),
-                            value,
-                        })
-                    })
-                    .collect::<std::option::Option<Vec<ValueSerializer>>>();
-                let serialized = serialized
-                    .map_or_else(|| Err(serde::ser::Error::custom(&"error serializing")), Ok)?;
-                seq.serialize_element(&serialized)?;
+                    .into_iter()
+                    .map(|x| arena.get(*x))
+                    .collect::<std::option::Option<Vec<&Value>>>();
+                serialized.map_or_else(
+                    || Err(serde::ser::Error::custom(&"error serializing")),
+                    |x| seq.serialize_element(&x),
+                )?;
                 seq.end()
             }
         }
@@ -686,39 +428,29 @@ impl Serialize for ValueSerializer {
 #[cfg(test)]
 mod test {
     use im_rc::ordmap;
+    use once_cell::unsync::Lazy;
+    use slotmap::HopSlotMap;
 
     use super::*;
     #[test]
     fn serialization_deserialization_yields_same_structures() {
-        let mut ar = HopSlotMap::new();
-        let refrer = ar.insert(Value::Int(1.into()));
+        let arena = unsafe { &mut ARENA };
+        let refrer = arena.insert(Value::Int(1.into()));
 
-        let refre2 = ar.insert(Value::Int(1.into()));
-        let refre3 = ar.insert(Value::Int(1.into()));
-        let refre4 = ar.insert(Value::Int(1.into()));
-        let expected = Value::Union(Union::Left(
-            ar.insert(Value::Map(ordmap! {refrer => refre3, refre2 => refre4})),
-        ));
-        let arena = Rc::new(RefCell::new(ar));
+        let refre2 = arena.insert(Value::Int(1.into()));
+        let refre3 = arena.insert(Value::Int(1.into()));
+        let refre4 = arena.insert(Value::Int(1.into()));
+        let expected = Value::Union(Union::Left(arena.insert(Value::Pair {
+            fst: refre2,
+            snd: refre4,
+        })));
 
-        let ser = &serde_json::to_string(&ValueSerializer {
-            arena: Rc::clone(&arena),
-            value: expected.clone(),
-        })
-        .unwrap();
-        let arena = Rc::new(RefCell::new(HopSlotMap::new()));
-        let structure = WithValueDeser {
-            arena: Rc::clone(&arena),
-        };
-        let mut x = serde_json::Deserializer::from_str(ser);
-        let res = structure.deserialize(&mut x).unwrap();
+        let ser = &serde_json::to_string(&expected).unwrap();
+        unsafe { ARENA = Lazy::new(HopSlotMap::new) };
+        let x: Value = serde_json::from_str(ser).unwrap();
         // same keys
-        assert_eq!(res, expected);
-        let ser2 = &serde_json::to_string(&ValueSerializer {
-            arena: Rc::clone(&arena),
-            value: res,
-        })
-        .unwrap();
+        assert_eq!(x, expected);
+        let ser2 = &serde_json::to_string(&x).unwrap();
         // same serialized
         assert_eq!(ser, ser2);
     }

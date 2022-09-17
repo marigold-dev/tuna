@@ -1,3 +1,4 @@
+pub mod arena;
 pub mod compile_store;
 pub(crate) mod conversions;
 pub mod env;

@@ -1342,6 +1342,7 @@ dependencies = [
  "criterion",
  "im-rc",
  "mimalloc",
+ "once_cell",
  "rug",
  "serde",
  "serde_json",
