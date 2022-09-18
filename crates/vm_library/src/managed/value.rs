@@ -266,22 +266,30 @@ impl<'de> Visitor<'de> for ValueVisitor {
                     )
                 }
                 "Pair" => {
-                    let elem1 = seq.next_element::<[Value; 2]>()?;
-                    elem1.map_or_else(
+                    let elem1 = seq.next_element::<Value>()?;
+                    let elem1 = elem1.map_or_else(
                         || {
                             Err(serde::de::Error::invalid_type(
                                 serde::de::Unexpected::Str("unexpected sequence"),
                                 &self,
                             ))
                         },
-                        |[value1, value2]| {
-                            let res = Value::Pair {
-                                fst: arena.insert(value1),
-                                snd: arena.insert(value2),
-                            };
-                            Ok(res)
+                        |v| Ok(arena.insert(v)),
+                    )?;
+                    let elem2 = seq.next_element::<Value>()?;
+                    let elem2 = elem2.map_or_else(
+                        || {
+                            Err(serde::de::Error::invalid_type(
+                                serde::de::Unexpected::Str("unexpected sequence"),
+                                &self,
+                            ))
                         },
-                    )
+                        |v| Ok(arena.insert(v)),
+                    )?;
+                    Ok(Value::Pair {
+                        fst: elem1,
+                        snd: elem2,
+                    })
                 }
 
                 "Option" => {
@@ -443,6 +451,7 @@ mod test {
         })));
 
         let ser = &serde_json::to_string(&expected).unwrap();
+        dbg!(ser);
         unsafe { ARENA = Lazy::new(HopSlotMap::new) };
         let x: Value = serde_json::from_str(ser).unwrap();
         // same keys
