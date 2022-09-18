@@ -427,7 +427,6 @@ impl Serialize for Value {
 
 #[cfg(test)]
 mod test {
-    use im_rc::ordmap;
     use once_cell::unsync::Lazy;
     use slotmap::HopSlotMap;
 
@@ -435,10 +434,8 @@ mod test {
     #[test]
     fn serialization_deserialization_yields_same_structures() {
         let arena = unsafe { &mut ARENA };
-        let refrer = arena.insert(Value::Int(1.into()));
 
         let refre2 = arena.insert(Value::Int(1.into()));
-        let refre3 = arena.insert(Value::Int(1.into()));
         let refre4 = arena.insert(Value::Int(1.into()));
         let expected = Value::Union(Union::Left(arena.insert(Value::Pair {
             fst: refre2,

@@ -1,25 +1,23 @@
-use std::{cell::RefCell, ptr::NonNull, rc::Rc};
+use std::ptr::NonNull;
 
-use slotmap::{DefaultKey, HopSlotMap, KeyData};
+use slotmap::{DefaultKey, KeyData};
 use wasmer::{Instance, Module, NativeFunc};
 
 use crate::{
     conversions,
     env::Context,
-    errors::VMResult,
+    errors::{vm::VmError, VMResult},
     managed::{imports::make_imports, value::Value},
 };
 
 // TODO: remove unwraps
 pub fn call_module(
-    arena: Rc<RefCell<HopSlotMap<DefaultKey, Value>>>,
     m: Module,
     gas_limit: u64,
     params: DefaultKey,
     initial_storage: DefaultKey,
 ) -> VMResult<DefaultKey> {
     let mut env = Box::new(Context {
-        arena,
         instance: None,
         pusher: None,
         gas_limit,

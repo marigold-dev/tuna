@@ -1,9 +1,10 @@
 use crate::{
+    arena::ARENA,
     errors::{vm::VmError, VMResult},
     managed::value::Value,
 };
-use slotmap::{DefaultKey, HopSlotMap, Key};
-use std::{cell::RefCell, ptr::NonNull, rc::Rc};
+use slotmap::{DefaultKey, Key};
+use std::ptr::NonNull;
 use wasmer::{Instance, WasmerEnv};
 use wasmer_middlewares::metering::{get_remaining_points, set_remaining_points, MeteringPoints};
 
@@ -12,7 +13,6 @@ pub struct Context {
     pub instance: Option<NonNull<Instance>>,
     pub pusher: Option<NonNull<wasmer::NativeFunc<i64, ()>>>,
     pub gas_limit: u64,
-    pub arena: Rc<RefCell<HopSlotMap<DefaultKey, Value>>>,
 }
 unsafe impl Send for Context {}
 
@@ -72,17 +72,14 @@ impl Context {
         }
     }
     pub fn bump(&self, value: Value) -> u64 {
-        self.arena
-            .as_ref()
-            .borrow_mut()
-            .insert(value)
-            .data()
-            .as_ffi()
+        let arena = unsafe { &mut ARENA };
+
+        arena.insert(value).data().as_ffi()
     }
     pub fn get(&self, value: DefaultKey) -> VMResult<Value> {
-        self.arena
-            .as_ref()
-            .borrow_mut()
+        let arena = unsafe { &mut ARENA };
+
+        arena
             .remove(value)
             .map_or_else(|| Err(VmError::RuntimeErr("Value doesnt exist".into())), Ok)
     }

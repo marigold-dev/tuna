@@ -1,7 +1,14 @@
+use std::{borrow::Cow, ptr::NonNull};
+
 use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
 use mimalloc::MiMalloc;
 use serde::{Deserialize, Serialize};
-use vm_library::{arena::ARENA, compile_store, managed::value::Value};
+use vm_library::{
+    arena::ARENA,
+    compile_store,
+    env::Context,
+    managed::{imports, value::Value},
+};
 use wasmer::{imports, wat2wasm, Instance, Module};
 use wasmer_middlewares::metering::set_remaining_points;
 
@@ -22,7 +29,17 @@ fn benchmark(num: i64, json: &str) -> (Module, String, i64) {
         wat2wasm(x.mod_.as_bytes()).unwrap(),
     )
     .unwrap();
-    let instance = Instance::new(&module, &imports! {}).unwrap();
+    let mut env = Box::new(Context {
+        instance: None,
+        pusher: None,
+        gas_limit: 10000,
+    });
+    let store = module.store();
+
+    let imports = imports::make_imports(&env, store);
+    let mut instance = Box::new(Instance::new(&module, &imports).unwrap());
+    env.instance = NonNull::new(instance.as_mut());
+
     set_remaining_points(&instance, 100000);
     let caller = instance
         .exports
@@ -35,8 +52,9 @@ fn benchmark(num: i64, json: &str) -> (Module, String, i64) {
 }
 //RUSTFLAGS='-C target-cpu=native' cargo bench
 #[derive(Deserialize, Serialize)]
-struct T {
-    mod_: String,
+struct T<'a> {
+    #[serde(borrow)]
+    mod_: Cow<'a, str>,
     arg: Value,
     initial_storage: Value,
 }
