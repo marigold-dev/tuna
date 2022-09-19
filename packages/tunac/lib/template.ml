@@ -4,6 +4,7 @@ let import_list =
   let ref_ref_ref__ref =
     "(param i64 i64 i64) (result i64)"
   in
+  let ref_ref_ref__ = "(param i64 i64 i64)" in
   let ref__ref = "(param i64) (result i64)" in
   let ref__i32 = "(param i64) (result i32)" in
   let i32__ref = "(param i32) (result i64)" in
@@ -22,6 +23,7 @@ let import_list =
   ; func ref__ref "cdr"
   ; func ref__ref "some"
   ; func const "nil"
+  ; func const "none"
   ; func const "zero"
   ; func const "empty_set"
   ; func const "sender"
@@ -44,6 +46,8 @@ let import_list =
   ; func i32__ref "const"
   ; func ref__ref "get_some"
   ; func ref__ref "abs"
+  ; func ref__ref "eq"
+  ; func ref__ref "gt"
   ; func ref__ref "lt"
   ; func i32__ref "closure"
   ; func ref__ref "left"
@@ -52,6 +56,10 @@ let import_list =
   ; func ref_ref_ref__ref "transfer_tokens"
   ; func ref__ref "address"
   ; func const "self"
+  ; func ref_ref_ref__ "get_and_update"
+  ; func ref__ "read_ticket"
+  ; func ref_ref__ref "ticket"
+  ; func const "amount"
   ]
   |> String.concat "\n"
 

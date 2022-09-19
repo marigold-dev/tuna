@@ -23,7 +23,7 @@ let compile_constant value =
 let rec compile_instruction instruction =
   match instruction with
   | Prim (_, I_UNPAIR, _, _) ->
-    "(call $unpair (call $pop))"
+    "(call $unpair (call $pop)) ;; implicit return"
 
   | Prim (_, I_PAIR, _, _) ->
     "(call $push (call $pair (call $pop) (call $pop)))"
@@ -263,7 +263,7 @@ let rec compile_instruction instruction =
     "(call $push (call $empty_big_map))"
 
   | Prim (_, I_GET_AND_UPDATE, _, _) ->
-    "(call $get_and_update (call $pop) (call $pop) (call $pop))"
+    "(call $get_and_update (call $pop) (call $pop) (call $pop)) ;; implicit update"
 
   | Prim (_, I_INT, _, _) ->
     "(call $push (call $int (call $pop)))"
@@ -397,7 +397,7 @@ let rec compile_instruction instruction =
 
   | Prim (_, I_TICKET, _, _) ->
     (* pair ( ticket cty ) ( ticket cty ) : A -> option (ticket cty) : A *)
-    "(call $push (call $ticket (call $pop)))"
+    "(call $push (call $ticket (call $pop) (call $pop)))"
 
   | Prim (_, I_SPLIT_TICKET, _, _) ->
     (* ticket cty : pair nat nat : A -> option ( pair ( ticket cty ) ( ticket cty ) ) : A *)
@@ -405,7 +405,7 @@ let rec compile_instruction instruction =
 
   | Prim (_, I_READ_TICKET, _, _) ->
     (* ticket cty : A -> pair address cty nat : A *)
-    "(call $push (call $read_ticket (call $pop)))"
+    "(call $read_ticket (call $pop)) ;; implicit return"
 
   | Prim (_, I_JOIN_TICKETS, _, _) ->
     (* pair ( ticket cty ) ( ticket cty ) : A -> option ( ticket cty ) : A *)

@@ -11,6 +11,7 @@ Compile increment contract
   (import "env" "cdr" (func $cdr (param i64) (result i64)))
   (import "env" "some" (func $some (param i64) (result i64)))
   (import "env" "nil" (func $nil (result i64)))
+  (import "env" "none" (func $none (result i64)))
   (import "env" "zero" (func $zero (result i64)))
   (import "env" "empty_set" (func $empty_set (result i64)))
   (import "env" "sender" (func $sender (result i64)))
@@ -33,6 +34,8 @@ Compile increment contract
   (import "env" "const" (func $const (param i32) (result i64)))
   (import "env" "get_some" (func $get_some (param i64) (result i64)))
   (import "env" "abs" (func $abs (param i64) (result i64)))
+  (import "env" "eq" (func $eq (param i64) (result i64)))
+  (import "env" "gt" (func $gt (param i64) (result i64)))
   (import "env" "lt" (func $lt (param i64) (result i64)))
   (import "env" "closure" (func $closure (param i32) (result i64)))
   (import "env" "left" (func $left (param i64) (result i64)))
@@ -41,6 +44,10 @@ Compile increment contract
   (import "env" "transfer_tokens" (func $transfer_tokens (param i64 i64 i64) (result i64)))
   (import "env" "address" (func $address (param i64) (result i64)))
   (import "env" "self" (func $self (result i64)))
+  (import "env" "get_and_update" (func $get_and_update (param i64 i64 i64)))
+  (import "env" "read_ticket" (func $read_ticket (param i64)))
+  (import "env" "ticket" (func $ticket (param i64 i64) (result i64)))
+  (import "env" "amount" (func $amount (result i64)))
   
     (global $mode i32 (i32.const 0))
   

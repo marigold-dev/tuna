@@ -1,2 +1,2 @@
 (cram
- (deps ../bin/tunacc_test.exe increment.tz DexFA2.tz fa2_no_metadata.tz))
+ (deps ../bin/tunacc_test.exe increment.tz DexFA2.tz fa2_no_metadata.tz nft_auction.tz nft_wallet.tz))
