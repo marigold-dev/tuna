@@ -108,7 +108,7 @@ impl<'de> Deserialize<'de> for Union {
         deserializer.deserialize_tuple(2, UnionVisitor)
     }
 }
-#[derive(Debug, PartialEq, PartialOrd, Eq, Ord, Clone)]
+#[derive(Debug, PartialEq, PartialOrd, Eq, Ord)]
 pub enum Value {
     Bytes(Vec<u8>),
     String(String),
@@ -116,13 +116,51 @@ pub enum Value {
     Union(Union),
     Pair { fst: DefaultKey, snd: DefaultKey },
     Bool(bool),
-    Map(OrdMap<DefaultKey, DefaultKey>),
-    Set(OrdSet<DefaultKey>),
-    List(Vector<DefaultKey>),
+    Map(OrdMap<Value, Value>),
+    Set(OrdSet<Value>),
+    List(Vector<Value>),
     Unit,
     Option(Option<DefaultKey>),
 }
+impl Clone for Value {
+    fn clone(&self) -> Self {
+        match self {
+            Self::Bytes(arg0) => Self::Bytes(arg0.clone()),
+            Self::String(arg0) => Self::String(arg0.clone()),
+            Self::Int(arg0) => Self::Int(arg0.clone()),
+            Self::Union(arg0) => Self::Union(arg0.clone()),
+            Self::Pair { fst, snd } => {
+                let arena = unsafe { &mut ARENA };
+                let fst = arena
+                    .get(*fst)
+                    .cloned()
+                    .map(|x| arena.insert(x))
+                    .expect("runtime error");
+                let snd = arena
+                    .get(*snd)
+                    .cloned()
+                    .map(|x| arena.insert(x))
+                    .expect("runtime error");
 
+                Self::Pair { fst, snd }
+            }
+            Self::Bool(arg0) => Self::Bool(*arg0),
+            Self::Map(arg0) => Self::Map(arg0.clone()),
+            Self::Set(arg0) => Self::Set(arg0.clone()),
+            Self::List(arg0) => Self::List(arg0.clone()),
+            Self::Unit => Self::Unit,
+            Self::Option(arg0) => match arg0 {
+                None => Self::Option(None),
+                Some(x) => {
+                    let arena = unsafe { &mut ARENA };
+                    let value = arena.get(*x);
+                    let value = value.cloned().map(|x| arena.insert(x));
+                    Self::Option(value)
+                }
+            },
+        }
+    }
+}
 unsafe impl Sync for Value {}
 unsafe impl Send for Value {}
 
@@ -222,11 +260,7 @@ impl<'de> Visitor<'de> for ValueVisitor {
                                 &"Value enum",
                             ))
                         },
-                        |x| {
-                            Ok(Value::List(
-                                x.into_iter().map(|x| arena.insert(x)).collect(),
-                            ))
-                        },
+                        |x| Ok(Value::List(x)),
                     )
                 }
                 "Map" => {
@@ -238,13 +272,7 @@ impl<'de> Visitor<'de> for ValueVisitor {
                                 &"Value enum",
                             ))
                         },
-                        |elem| {
-                            Ok(Value::Map(OrdMap::from(
-                                elem.into_iter()
-                                    .map(|(k, v)| (arena.insert(k), arena.insert(v)))
-                                    .collect::<Vec<(DefaultKey, DefaultKey)>>(),
-                            )))
-                        },
+                        |elem| Ok(Value::Map(OrdMap::from(elem))),
                     )
                 }
                 "Set" => {
@@ -256,13 +284,7 @@ impl<'de> Visitor<'de> for ValueVisitor {
                                 &"Value enum",
                             ))
                         },
-                        |x| {
-                            Ok(Value::Set(OrdSet::from(
-                                x.into_iter()
-                                    .map(|x| arena.insert(x))
-                                    .collect::<Vec<DefaultKey>>(),
-                            )))
-                        },
+                        |x| Ok(Value::Set(OrdSet::from(x))),
                     )
                 }
                 "Pair" => {
@@ -368,15 +390,7 @@ impl Serialize for Value {
             Map(map) => {
                 let mut seq = serializer.serialize_tuple(2)?;
                 seq.serialize_element("Map")?;
-                let serialized = map
-                    .into_iter()
-                    .map(|(x, y)| {
-                        let tup = (arena.get(*x)?, arena.get(*y)?);
-                        Some(tup)
-                    })
-                    .collect::<std::option::Option<Vec<(&Value, &Value)>>>();
-                let serialized = serialized
-                    .map_or_else(|| Err(serde::ser::Error::custom(&"error serializing")), Ok)?;
+                let serialized = map.iter().collect::<Vec<(&Value, &Value)>>();
                 seq.serialize_element(&serialized)?;
                 seq.end()
             }
@@ -384,10 +398,7 @@ impl Serialize for Value {
                 let mut seq = serializer.serialize_tuple(2)?;
                 seq.serialize_element("Set")?;
 
-                let serialized: std::option::Option<Vec<&Value>> =
-                    set.into_iter().map(|x| arena.get(*x)).collect();
-                let serialized = serialized
-                    .map_or_else(|| Err(serde::ser::Error::custom(&"error serializing")), Ok)?;
+                let serialized: Vec<&Value> = set.into_iter().collect();
                 seq.serialize_element(&serialized)?;
                 seq.end()
             }
@@ -419,14 +430,7 @@ impl Serialize for Value {
             List(lst) => {
                 let mut seq = serializer.serialize_tuple(3)?;
                 seq.serialize_element("List")?;
-                let serialized = lst
-                    .into_iter()
-                    .map(|x| arena.get(*x))
-                    .collect::<std::option::Option<Vec<&Value>>>();
-                serialized.map_or_else(
-                    || Err(serde::ser::Error::custom(&"error serializing")),
-                    |x| seq.serialize_element(&x),
-                )?;
+                seq.serialize_element(&lst)?;
                 seq.end()
             }
         }

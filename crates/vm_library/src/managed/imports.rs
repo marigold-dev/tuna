@@ -291,7 +291,7 @@ pub fn get_n(env: &Context, idx: u32, value: Value) -> VMResult<i64> {
     Ok(key)
 }
 
-pub fn mem(env: &Context, value1: Value, value2: DefaultKey) -> VMResult<i64> {
+pub fn mem(env: &Context, value1: Value, value2: Value) -> VMResult<i64> {
     env.update_gas(300)?;
     match value1 {
         Value::Map(x) => {
@@ -311,12 +311,13 @@ pub fn mem(env: &Context, value1: Value, value2: DefaultKey) -> VMResult<i64> {
         .into()),
     }
 }
-pub fn map_get(env: &Context, value1: Value, value2: DefaultKey) -> VMResult<i64> {
+pub fn map_get(env: &Context, value1: Value, value2: Value) -> VMResult<i64> {
     env.update_gas(300)?;
     match value1 {
         Value::Map(x) => {
             let res = x.get(&value2);
-            let bumped = env.bump(Value::Option(res.copied()));
+            let bumped = res.map(|res| env.bump_raw(res.clone()));
+            let bumped = env.bump(Value::Option(bumped));
             conversions::to_i64(bumped)
         }
         _ => Err(FFIError::ExternError {
@@ -326,12 +327,20 @@ pub fn map_get(env: &Context, value1: Value, value2: DefaultKey) -> VMResult<i64
         .into()),
     }
 }
-pub fn update(env: &Context, map: Value, key: DefaultKey, value: Value) -> VMResult<i64> {
+pub fn update(env: &Context, map: Value, key: Value, value: Value) -> VMResult<i64> {
     env.update_gas(300)?;
     match (&map, value) {
         (Value::Map(x), Value::Option(boxed)) => {
             let mut map = x.clone();
-            boxed.map(|x| map.insert(key, x));
+            match boxed {
+                None => {
+                    map.remove(&key);
+                }
+                Some(x) => {
+                    let x = env.get(x)?;
+                    map.insert(key, x);
+                }
+            }
             let bumped = env.bump(Value::Map(map));
             conversions::to_i64(bumped)
         }
@@ -399,17 +408,18 @@ where
 }
 pub const fn call3<F, A>(f: F) -> impl Fn(&Context, i64, i64, i64) -> VMResult<A>
 where
-    F: Fn(&Context, Value, DefaultKey, Value) -> VMResult<A>,
+    F: Fn(&Context, Value, Value, Value) -> VMResult<A>,
 {
     move |env, arg, arg2, arg3| match (
         env.get(DefaultKey::from(KeyData::from_ffi(arg as u64))),
         env.get(DefaultKey::from(KeyData::from_ffi(arg3 as u64))),
-        DefaultKey::from(KeyData::from_ffi(arg2 as u64)),
+        env.get(DefaultKey::from(KeyData::from_ffi(arg2 as u64))),
     ) {
-        (Ok(x), Ok(y), z) => f(env, x, z, y),
+        (Ok(x), Ok(y), Ok(z)) => f(env, x, z, y),
         _ => Err(VmError::RuntimeErr("illegal argument".to_string())),
     }
 }
+
 pub fn make_imports(env: &Context, store: &Store) -> ImportObject {
     let mut imports = ImportObject::new();
     let mut exports = Exports::new();
@@ -488,11 +498,11 @@ pub fn make_imports(env: &Context, store: &Store) -> ImportObject {
     );
     exports.insert(
         "mem",
-        Function::new_native_with_env(store, env.clone(), call2_default_value(mem)),
+        Function::new_native_with_env(store, env.clone(), call2(mem)),
     );
     exports.insert(
         "map_get",
-        Function::new_native_with_env(store, env.clone(), call2_default_value(map_get)),
+        Function::new_native_with_env(store, env.clone(), call2(map_get)),
     );
     exports.insert(
         "update",

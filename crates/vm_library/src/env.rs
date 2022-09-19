@@ -76,6 +76,11 @@ impl Context {
 
         arena.insert(value).data().as_ffi()
     }
+    pub fn bump_raw(&self, value: Value) -> DefaultKey {
+        let arena = unsafe { &mut ARENA };
+
+        arena.insert(value)
+    }
     pub fn get(&self, value: DefaultKey) -> VMResult<Value> {
         let arena = unsafe { &mut ARENA };
 
