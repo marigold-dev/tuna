@@ -80,6 +80,7 @@ impl Context {
         .expect("impossible")
     }
 
+    #[inline]
     pub fn update_gas(&self, cost: u64) -> VMResult<()> {
         let gas_left = self.get_gas_left();
         if cost > gas_left {

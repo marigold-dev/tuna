@@ -90,7 +90,7 @@ fn benchmark2(num: i64, json: &str) -> (Module, String, i64) {
     let x = deser2(json);
 
     let module =
-        unsafe { Module::deserialize(&compile_store::new_compile_store(), &x.module_).unwrap() };
+        unsafe { Module::deserialize(&compile_store::new_headless(), &x.module_).unwrap() };
     let mut env = Context {
         inner: Rc::new(RefCell::new(Inner {
             instance: None,
@@ -180,15 +180,16 @@ fn criterion_benchmark(c: &mut Criterion) {
     })
     .unwrap();
     let input = (json, 100);
+    let input2 = (json2, 100);
 
+    // c.bench_with_input(
+    //     BenchmarkId::new("test", "simple module"),
+    //     &input,
+    //     |b, (json, num)| b.iter(|| benchmark(*num, json)),
+    // );
     c.bench_with_input(
         BenchmarkId::new("test", "simple module"),
-        &input,
-        |b, (json, num)| b.iter(|| benchmark(*num, json)),
-    );
-    c.bench_with_input(
-        BenchmarkId::new("test", "simple module"),
-        &(json2, 100),
+        &input2,
         |b, (json, num)| b.iter(|| benchmark2(*num, json)),
     );
 }
