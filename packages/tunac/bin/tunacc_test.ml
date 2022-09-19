@@ -6,5 +6,5 @@ let read_file name =
 
 let () =
   let wat, constants = Sys.argv.(1) |> read_file |> Tunac.Compiler.compile in
-  let _ = Tunac.Output.make wat constants in
+  let _ = Tunac.Output.make wat constants |> Result.get_ok in
   print_endline wat

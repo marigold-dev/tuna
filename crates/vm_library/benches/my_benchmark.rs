@@ -1,52 +1,143 @@
-use std::{borrow::Cow, ptr::NonNull};
+use std::{borrow::Cow, cell::RefCell, ptr::NonNull, rc::Rc, sync::Arc};
 
 use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
 use mimalloc::MiMalloc;
 use serde::{Deserialize, Serialize};
+use slotmap::{DefaultKey, Key, KeyData};
 use vm_library::{
     arena::ARENA,
     compile_store,
-    env::Context,
-    managed::{imports, value::Value},
+    env::{Context, Inner},
+    managed::{
+        imports,
+        value::{Union, Value},
+    },
 };
 use wasmer::{imports, wat2wasm, Instance, Module};
-use wasmer_middlewares::metering::set_remaining_points;
-
 #[global_allocator]
 static GLOBAL: MiMalloc = MiMalloc;
-
-fn deser(json: &str) -> T {
+fn deser(json: &str) -> Init {
     serde_json::from_str(json).unwrap()
 }
-fn ser(res: T) -> String {
-    serde_json::ser::to_string(&res).unwrap()
+fn ser(res: &Init) -> String {
+    serde_json::ser::to_string(res).unwrap()
+}
+fn deser2(json: &str) -> Init2 {
+    serde_json::from_str(json).unwrap()
+}
+fn ser2(res: &Init2) -> String {
+    serde_json::ser::to_string(res).unwrap()
 }
 fn benchmark(num: i64, json: &str) -> (Module, String, i64) {
     let x = deser(json);
 
     let module = Module::new(
         &compile_store::new_compile_store(),
-        wat2wasm(x.mod_.as_bytes()).unwrap(),
+        wat2wasm(x.module_.as_bytes()).unwrap(),
     )
     .unwrap();
-    let mut env = Box::new(Context {
-        instance: None,
-        pusher: None,
-        gas_limit: 10000,
-    });
+    let mut env = Context {
+        inner: Rc::new(RefCell::new(Inner {
+            instance: None,
+            pusher: None,
+            gas_limit: 10000,
+        })),
+    };
     let store = module.store();
 
     let imports = imports::make_imports(&env, store);
-    let mut instance = Box::new(Instance::new(&module, &imports).unwrap());
-    env.instance = NonNull::new(instance.as_mut());
+    let instance = Box::from(Instance::new(&module, &imports).unwrap());
+    let new = NonNull::from(instance.as_ref());
+    let pusher = Box::from(
+        instance
+            .exports
+            .get_native_function::<i64, ()>("push")
+            .unwrap(),
+    );
+    env.set_instance(Some(new));
+    env.set_pusher(Some(NonNull::from(pusher.as_ref())));
 
-    set_remaining_points(&instance, 100000);
+    env.set_gas_left(100000);
+
+    let arena = unsafe { &mut ARENA };
+    let arg = arena.insert(Value::Int(5.into()));
+    let arg = Value::Union(Union::Right(arg));
+    let arg = arena.insert(arg);
+    let arg = Value::Union(Union::Left(arg));
+    let fst = arena.insert(arg);
+    let snd = arena.insert(Value::Int(0.into()));
+    let arg = Value::Pair { fst, snd };
+    let arg = arena.insert(arg).data().as_ffi();
+
     let caller = instance
         .exports
-        .get_native_function::<i64, i64>("fac")
+        .get_native_function::<i64, i64>("main")
         .unwrap();
-    let result = caller.call(num).expect("error");
-    let serialized = ser(x);
+    let result = caller.call(arg as i64).expect("error");
+    let key = DefaultKey::from(KeyData::from_ffi(result as u64));
+    let value = arena.get(key);
+    match value {
+        Some(Value::Pair { fst, snd }) => {
+            assert_eq!(arena.get(*snd).unwrap(), &Value::Int(5.into()))
+        }
+        _ => todo!(),
+    };
+    let serialized = ser(&x);
+    unsafe { ARENA.clear() };
+    (module, serialized, result)
+}
+fn benchmark2(num: i64, json: &str) -> (Module, String, i64) {
+    let x = deser2(json);
+
+    let module =
+        unsafe { Module::deserialize(&compile_store::new_compile_store(), &x.module_).unwrap() };
+    let mut env = Context {
+        inner: Rc::new(RefCell::new(Inner {
+            instance: None,
+            pusher: None,
+            gas_limit: 10000,
+        })),
+    };
+    let store = module.store();
+
+    let imports = imports::make_imports(&env, store);
+    let instance = Box::from(Instance::new(&module, &imports).unwrap());
+    let new = NonNull::from(instance.as_ref());
+    let pusher = Box::from(
+        instance
+            .exports
+            .get_native_function::<i64, ()>("push")
+            .unwrap(),
+    );
+    env.set_instance(Some(new));
+    env.set_pusher(Some(NonNull::from(pusher.as_ref())));
+
+    env.set_gas_left(100000);
+
+    let arena = unsafe { &mut ARENA };
+    let arg = arena.insert(Value::Int(5.into()));
+    let arg = Value::Union(Union::Right(arg));
+    let arg = arena.insert(arg);
+    let arg = Value::Union(Union::Left(arg));
+    let fst = arena.insert(arg);
+    let snd = arena.insert(Value::Int(0.into()));
+    let arg = Value::Pair { fst, snd };
+    let arg = arena.insert(arg).data().as_ffi();
+
+    let caller = instance
+        .exports
+        .get_native_function::<i64, i64>("main")
+        .unwrap();
+    let result = caller.call(arg as i64).expect("error");
+    let key = DefaultKey::from(KeyData::from_ffi(result as u64));
+    let value = arena.get(key);
+    match value {
+        Some(Value::Pair { fst, snd }) => {
+            assert_eq!(arena.get(*snd).unwrap(), &Value::Int(5.into()))
+        }
+        _ => todo!(),
+    };
+    let serialized = ser2(&x);
     unsafe { ARENA.clear() };
     (module, serialized, result)
 }
@@ -58,16 +149,47 @@ struct T<'a> {
     arg: Value,
     initial_storage: Value,
 }
-
+#[derive(Deserialize, Serialize)]
+struct Init {
+    module_: String,
+    constants: Vec<(i32, Value)>,
+}
+#[derive(Deserialize, Serialize)]
+struct Init2 {
+    module_: Vec<u8>,
+    constants: Vec<(i32, Value)>,
+}
+fn compile(num: i64, json: &[u8]) -> Module {
+    unsafe { Module::deserialize(&compile_store::new_compile_store(), json).unwrap() }
+}
 fn criterion_benchmark(c: &mut Criterion) {
-    let json = r#"{"mod_":" (module (type $t0 (func (param i64) (result i64))) (func $fac (export \"fac\") (type $t0) (param $p0 i64) (result i64) (if $I0 (result i64) (i64.lt_s (local.get $p0) (i64.const 1)) (then (i64.const 1)) (else (i64.mul (local.get $p0) (call $fac (i64.sub (local.get $p0) (i64.const 1))))))))","arg":["Union",["Left",["List",[["Int","0"],["Int","1"],["Int","2"],["Int","3"],["Int","4"],["Int","5"],["Int","6"],["Int","7"],["Int","8"],["Int","9"],["Int","10"],["Int","11"],["Int","12"],["Int","13"],["Int","14"],["Int","15"],["Int","16"],["Int","17"],["Int","18"],["Int","19"],["Int","20"],["Int","21"],["Int","22"],["Int","23"],["Int","24"],["Int","25"],["Int","26"],["Int","27"],["Int","28"],["Int","29"],["Int","30"],["Int","31"],["Int","32"],["Int","33"],["Int","34"],["Int","35"],["Int","36"],["Int","37"],["Int","38"],["Int","39"],["Int","40"],["Int","41"],["Int","42"],["Int","43"],["Int","44"],["Int","45"],["Int","46"],["Int","47"],["Int","48"],["Int","49"],["Int","50"],["Int","51"],["Int","52"],["Int","53"],["Int","54"],["Int","55"],["Int","56"],["Int","57"],["Int","58"],["Int","59"],["Int","60"],["Int","61"],["Int","62"],["Int","63"],["Int","64"],["Int","65"],["Int","66"],["Int","67"],["Int","68"],["Int","69"],["Int","70"],["Int","71"],["Int","72"],["Int","73"],["Int","74"],["Int","75"],["Int","76"],["Int","77"],["Int","78"],["Int","79"],["Int","80"],["Int","81"],["Int","82"],["Int","83"],["Int","84"],["Int","85"],["Int","86"],["Int","87"],["Int","88"],["Int","89"],["Int","90"],["Int","91"],["Int","92"],["Int","93"],["Int","94"],["Int","95"],["Int","96"],["Int","97"],["Int","98"],["Int","99"]]]]],"initial_storage":["List",[["Int","0"],["Int","1"],["Int","2"],["Int","3"],["Int","4"],["Int","5"],["Int","6"],["Int","7"],["Int","8"],["Int","9"],["Int","10"],["Int","11"],["Int","12"],["Int","13"],["Int","14"],["Int","15"],["Int","16"],["Int","17"],["Int","18"],["Int","19"],["Int","20"],["Int","21"],["Int","22"],["Int","23"],["Int","24"],["Int","25"],["Int","26"],["Int","27"],["Int","28"],["Int","29"],["Int","30"],["Int","31"],["Int","32"],["Int","33"],["Int","34"],["Int","35"],["Int","36"],["Int","37"],["Int","38"],["Int","39"],["Int","40"],["Int","41"],["Int","42"],["Int","43"],["Int","44"],["Int","45"],["Int","46"],["Int","47"],["Int","48"],["Int","49"],["Int","50"],["Int","51"],["Int","52"],["Int","53"],["Int","54"],["Int","55"],["Int","56"],["Int","57"],["Int","58"],["Int","59"],["Int","60"],["Int","61"],["Int","62"],["Int","63"],["Int","64"],["Int","65"],["Int","66"],["Int","67"],["Int","68"],["Int","69"],["Int","70"],["Int","71"],["Int","72"],["Int","73"],["Int","74"],["Int","75"],["Int","76"],["Int","77"],["Int","78"],["Int","79"],["Int","80"],["Int","81"],["Int","82"],["Int","83"],["Int","84"],["Int","85"],["Int","86"],["Int","87"],["Int","88"],["Int","89"],["Int","90"],["Int","91"],["Int","92"],["Int","93"],["Int","94"],["Int","95"],["Int","96"],["Int","97"],["Int","98"],["Int","99"]]]}"#;
+    let json = r#"  {"module_":"\n(module\n  (import \"env\" \"pair\" (func $pair (param i64 i64) (result i64)))\n(import \"env\" \"unpair\" (func $unpair (param i64) (result i64)))\n(import \"env\" \"z_add\" (func $z_add (param i64 i64) (result i64)))\n(import \"env\" \"z_sub\" (func $z_sub (param i64 i64) (result i64)))\n(import \"env\" \"compare\" (func $compare (param i64 i64) (result i64)))\n(import \"env\" \"car\" (func $car (param i64) (result i64)))\n(import \"env\" \"cdr\" (func $cdr (param i64) (result i64)))\n(import \"env\" \"some\" (func $some (param i64) (result i64)))\n(import \"env\" \"nil\" (func $nil (result i64)))\n(import \"env\" \"zero\" (func $zero (result i64)))\n(import \"env\" \"empty_set\" (func $empty_set (result i64)))\n(import \"env\" \"sender\" (func $sender (result i64)))\n(import \"env\" \"map_get\" (func $map_get (param i64 i64) (result i64)))\n(import \"env\" \"mem\" (func $mem (param i64 i64) (result i64)))\n(import \"env\" \"update\" (func $update (param i64 i64 i64) (result i64)))\n(import \"env\" \"iter\" (func $iter (param i64 i32) (result i64)))\n(import \"env\" \"if_left\" (func $if_left (param i64) (result i32)))\n(import \"env\" \"is_none\" (func $is_none (param i64) (result i32)))\n(import \"env\" \"isnat\" (func $isnat (param i64) (result i64)))\n(import \"env\" \"not\" (func $not (param i64) (result i64)))\n(import \"env\" \"or\" (func $or (param i64 i64) (result i64)))\n(import \"env\" \"deref_bool\" (func $deref_bool (param i64) (result i32)))\n(import \"env\" \"neq\" (func $neq (param i64) (result i64)))\n(import \"env\" \"string\" (func $string (param i32) (result i64)))\n(import \"env\" \"failwith\" (func $failwith (param i64)))\n(import \"env\" \"get_n\" (func $get_n (param i32 i64) (result i64)))\n(import \"env\" \"exec\" (func $exec (param i64 i64) (result i64)))\n(import \"env\" \"apply\" (func $apply (param i64 i64) (result i64)))\n(import \"env\" \"const\" (func $const (param i32) (result i64)))\n(import \"env\" \"get_some\" (func $get_some (param i64) (result i64)))\n(import \"env\" \"abs\" (func $abs (param i64) (result i64)))\n(import \"env\" \"lt\" (func $lt (param i64) (result i64)))\n(import \"env\" \"get_left\" (func $get_left (param i64) (result i64)))\n(import \"env\" \"get_right\" (func $get_right (param i64) (result i64)))\n(import \"env\" \"closure\" (func $closure (param i32) (result i64)))\n\n  (global $mode i32 (i32.const 0))\n\n  (memory 1)\n  (global $sp (mut i32) (i32.const 4000)) ;; stack pointer\n  (global $sh_sp (mut i32) (i32.const 1000)) ;;shadow_stack stack pointer\n\n  (global $__stack_base i32 (i32.const 32768))\n\n  (func $dip (param $n i32) (result)\n    (local $stop i32)\n    (local $sp' i32)\n    (local $sh_sp' i32)\n    (local.set $stop (i32.const 0))\n    (local.set $sp'  (global.get $sp))\n    (local.tee $sh_sp' (i32.sub (global.get $sh_sp) (local.get $n)))\n    global.set $sh_sp\n    (loop $l\n      (i32.mul (i32.const 8) (i32.add (global.get $__stack_base) (i32.add (local.get $sh_sp') (local.get $stop))))\n      (i64.load (i32.mul (i32.const 8) (i32.add (local.get $sp') (local.get $stop))))\n      i64.store\n      (local.tee $stop (i32.add (local.get $stop) (i32.const 1)))\n      (local.get $n)\n      i32.ne\n      br_if $l)\n\n    (global.set $sp\n    (i32.add\n      (local.get $sp') (local.get $n))))\n\n  (func $undip (param $n i32) (result)\n    (local $stop i32)\n    (local $sp' i32)\n    (local $sh_sp' i32)\n    (local.tee $sp'  (i32.sub (global.get $sp) (local.get $n)))\n    global.set $sp\n    (local.set $sh_sp' (global.get $sh_sp))\n    (local.set $stop (i32.const 0))\n    (loop $l\n      (i32.mul (i32.const 8) (i32.add (local.get $sp') (local.get $stop)))\n      (i64.load\n        (i32.add\n          (global.get $__stack_base)\n          (i32.mul (i32.const 8) (i32.add (local.get $sh_sp') (local.get $stop)))))\n      (i64.store)\n      (local.tee $stop (i32.add (local.get $stop) (i32.const 1)))\n      (local.get $n)\n      i32.ne\n      br_if $l)\n    (global.set $sh_sp (i32.add (local.get $sh_sp') (local.get $n))))\n\n  (func $dup (param $n i32) (result)\n    (i64.load (i32.mul (i32.const 8) (i32.add (global.get $sp) (local.get $n))))\n    (call $push))\n\n  (func $swap (param) (result)\n    (local $v1 i64)\n    (local $v2 i64)\n    (local.set $v1 (call $pop))\n    (local.set $v2 (call $pop))\n    (call $push (local.get $v1))\n    (call $push (local.get $v2)))\n\n  (func $dug (param $n i32) (result)\n    (local $idx i32)\n    (local $loop_idx i32)\n    (local $sp' i32)\n    (local $top i64)\n    (local.set $sp' (i32.add (global.get $sp) (local.get $n)))\n    (i32.mul (i32.const 8) (local.tee $idx (global.get $sp)))\n    (local.tee $loop_idx)\n    i64.load\n    local.set $top\n    (loop $loop\n      (i32.mul (i32.const 8) (local.get $idx))\n      (i32.mul (i32.const 8) (i32.add (local.get $loop_idx) (i32.const 1)))\n      local.tee $loop_idx\n      i64.load\n      i64.store\n      (local.set $idx (i32.add (local.get $idx) (i32.const 1)))\n      (local.get $idx)\n      (local.get $sp')\n      i32.lt_u\n      br_if $loop)\n\n    (i64.store (i32.mul (i32.const 8) (local.get $sp')) (local.get $top)))\n\n  (func $dig (param $n i32) (result)\n    (local $idx i32)\n    (local $loop_idx i32)\n    (local $sp' i32)\n    (local $digged i64)\n    (local.set $sp' (global.get $sp))\n    (i32.mul (i32.const 8) (local.tee $idx (i32.add (local.get $sp') (local.get $n))))\n    (local.tee $loop_idx)\n    (i64.load)\n    local.set $digged\n    (loop $loop\n      (i32.mul (i32.const 8) (local.get $idx))\n      (i32.sub (local.get $loop_idx) (i32.const 1))\n      local.tee $loop_idx\n      i32.const 8\n      i32.mul\n      i64.load\n      i64.store\n      (local.set $idx (i32.sub (local.get $idx) (i32.const 1)))\n      (local.get $sp')\n      (local.get $loop_idx)\n      i32.lt_u\n      br_if $loop)\n    (i64.store (i32.mul (i32.const 8) (global.get $sp)) (local.get $digged)))\n\n  (func $pop (result i64)\n    (local $spp i32)\n    (i32.mul (i32.const 8) (local.tee $spp (global.get $sp)))\n    i64.load\n    (global.set $sp (i32.add (local.get $spp) (i32.const 1))))  ;;set stackptr\n\n  (func $push (param $value i64) (result)\n    (local $spp i32)\n    (i32.mul (i32.const 8) (local.tee $spp (i32.sub (global.get $sp) (i32.const 1)) ))\n    (i64.store (local.get $value))\n    (global.set $sp (local.get $spp)))  ;;set stackptr\n\n  (func $drop (param $n i32) (result)\n    (global.set $sp (i32.add (global.get $sp) (local.get $n))))  ;;set stackptr\n\n  (table $closures funcref (elem ))\n\n\n  (func $main (param $v1 i64) (result i64)\n    (local $1 i64)\n    (call $push (local.get $v1))\n    (call $push (call $unpair (call $pop)))\n(call $if_left (call $pop)) (if (then (call $if_left (call $pop)) (if (then (call $swap)\n(call $push (call $z_sub (call $pop) (call $pop)))) (else (call $push (call $z_add (call $pop) (call $pop)))))) (else (call $drop (i32.const 2))\n(call $push (call $const (i32.const 0))) (; 0 ;)))\n(call $push (call $nil))\n(call $push (call $pair (call $pop) (call $pop)))\n    (call $pop))\n\n  (export \"push\" (func $push))\n  (export \"pop\" (func $push))\n  (export \"main\" (func $main)))\n","constants":[[0,["Int","0"]]]}
 
+    "#;
+    let x = deser(json);
+    let module = Module::new(
+        &compile_store::new_compile_store(),
+        wat2wasm(x.module_.as_bytes()).unwrap(),
+    )
+    .unwrap()
+    .serialize()
+    .unwrap();
+    let json2 = serde_json::to_string(&Init2 {
+        module_: module,
+        constants: x.constants,
+    })
+    .unwrap();
     let input = (json, 100);
 
     c.bench_with_input(
         BenchmarkId::new("test", "simple module"),
         &input,
         |b, (json, num)| b.iter(|| benchmark(*num, json)),
+    );
+    c.bench_with_input(
+        BenchmarkId::new("test", "simple module"),
+        &(json2, 100),
+        |b, (json, num)| b.iter(|| benchmark2(*num, json)),
     );
 }
 

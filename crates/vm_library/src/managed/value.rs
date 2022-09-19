@@ -455,7 +455,6 @@ mod test {
         })));
 
         let ser = &serde_json::to_string(&expected).unwrap();
-        dbg!(ser);
         unsafe { ARENA = Lazy::new(HopSlotMap::new) };
         let x: Value = serde_json::from_str(ser).unwrap();
         // same keys

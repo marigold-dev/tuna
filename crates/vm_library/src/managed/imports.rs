@@ -1,5 +1,9 @@
-use std::ops::{Add, Sub};
+use std::{
+    borrow::Borrow,
+    ops::{Add, Sub},
+};
 
+use im_rc::Vector;
 use rug::Integer;
 use slotmap::{DefaultKey, Key, KeyData};
 use wasmer::{Exports, Function, ImportObject, Store};
@@ -74,22 +78,22 @@ pub fn not(env: &Context, value: Value) -> VMResult<i64> {
     let bumped = env.bump(res);
     conversions::to_i64(bumped)
 }
-pub fn pair(env: &Context, value1: DefaultKey, value2: DefaultKey) -> VMResult<i64> {
+pub fn pair(env: &Context, value1: Value, value2: Value) -> VMResult<i64> {
     env.update_gas(300)?;
-    let res = Value::Pair {
-        fst: value1,
-        snd: value2,
-    };
+    let fst = env.bump_raw(value1);
+    let snd = env.bump_raw(value2);
+    let res = Value::Pair { fst, snd };
     let key = env.bump(res);
     conversions::to_i64(key)
 }
-pub fn unpair(env: &Context, value: Value) -> VMResult<(i64, i64)> {
+pub fn unpair(env: &Context, value: Value) -> VMResult<i64> {
     env.update_gas(300)?;
     match value {
         Value::Pair { fst, snd } => {
             let fst = conversions::to_i64(fst.data().as_ffi())?;
             let snd = conversions::to_i64(snd.data().as_ffi())?;
-            Ok((fst, snd))
+            env.push_value(snd)?;
+            Ok(fst)
         }
         _ => Err(FFIError::ExternError {
             value,
@@ -160,12 +164,18 @@ pub fn z_sub(env: &Context, value1: Value, value2: Value) -> VMResult<i64> {
         .into()),
     }
 }
-pub fn is_left(env: &Context, value: Value) -> VMResult<(i64, i32)> {
+pub fn is_left(env: &Context, value: Value) -> VMResult<i32> {
     env.update_gas(300)?;
     match value {
         Value::Union(Union::Left(l)) => {
             let key = conversions::to_i64(l.data().as_ffi())?;
-            Ok((key, 1))
+            env.push_value(key)?;
+            Ok(1)
+        }
+        Value::Union(Union::Right(l)) => {
+            let key = conversions::to_i64(l.data().as_ffi())?;
+            env.push_value(key)?;
+            Ok(0)
         }
         _ => Err(FFIError::ExternError {
             value: (value),
@@ -196,7 +206,7 @@ pub fn failwith(env: &Context, value: Value) -> VMResult<()> {
         .into()),
     }
 }
-pub fn is_none(env: &Context, value: Value) -> VMResult<(i64, i32)> {
+pub fn is_none(env: &Context, value: Value) -> VMResult<i32> {
     env.update_gas(300)?;
     match value {
         Value::Option(x) => (x).map_or_else(
@@ -204,11 +214,13 @@ pub fn is_none(env: &Context, value: Value) -> VMResult<(i64, i32)> {
                 let res = Value::Int(0.into());
                 let bumped = env.bump(res);
                 let key = conversions::to_i64(bumped)?;
-                Ok((key, 1))
+                env.push_value(key)?;
+                Ok(1)
             },
             |v| {
                 let key = conversions::to_i64(v.data().as_ffi())?;
-                Ok((key, 0))
+                env.push_value(key)?;
+                Ok(0)
             },
         ),
         _ => Err(FFIError::ExternError {
@@ -446,7 +458,7 @@ pub fn make_imports(env: &Context, store: &Store) -> ImportObject {
     );
     exports.insert(
         "pair",
-        Function::new_native_with_env(store, env.clone(), call2_default(pair)),
+        Function::new_native_with_env(store, env.clone(), call2(pair)),
     );
     exports.insert(
         "unpair",
@@ -469,7 +481,7 @@ pub fn make_imports(env: &Context, store: &Store) -> ImportObject {
         Function::new_native_with_env(store, env.clone(), call2(z_sub)),
     );
     exports.insert(
-        "is_left",
+        "if_left",
         Function::new_native_with_env(store, env.clone(), call1(is_left)),
     );
     exports.insert(
@@ -485,7 +497,7 @@ pub fn make_imports(env: &Context, store: &Store) -> ImportObject {
         Function::new_native_with_env(store, env.clone(), call1(is_none)),
     );
     exports.insert(
-        "is_nat",
+        "isnat",
         Function::new_native_with_env(store, env.clone(), call1(is_nat)),
     );
     exports.insert(
@@ -508,6 +520,106 @@ pub fn make_imports(env: &Context, store: &Store) -> ImportObject {
         "update",
         Function::new_native_with_env(store, env.clone(), call3(update)),
     );
+    // TODO FIXUp
+    exports.insert(
+        "nil",
+        Function::new_native_with_env(store, env.clone(), nil),
+    );
+    exports.insert(
+        "zero",
+        Function::new_native_with_env(store, env.clone(), todo_single),
+    );
+    exports.insert(
+        "empty_set",
+        Function::new_native_with_env(store, env.clone(), todo_single),
+    );
+    exports.insert(
+        "sender",
+        Function::new_native_with_env(store, env.clone(), todo_single),
+    );
+    exports.insert(
+        "source",
+        Function::new_native_with_env(store, env.clone(), todo_single),
+    );
+    exports.insert(
+        "iter",
+        Function::new_native_with_env(store, env.clone(), todo_single2),
+    );
+    exports.insert(
+        "is_left",
+        Function::new_native_with_env(store, env.clone(), todo_single3),
+    );
+    exports.insert(
+        "is_right",
+        Function::new_native_with_env(store, env.clone(), todo_single3),
+    );
+    exports.insert(
+        "string",
+        Function::new_native_with_env(store, env.clone(), todo_single4),
+    );
+    exports.insert(
+        "exec",
+        Function::new_native_with_env(store, env.clone(), todo_single6),
+    );
+    exports.insert(
+        "apply",
+        Function::new_native_with_env(store, env.clone(), todo_single6),
+    );
+    exports.insert(
+        "const",
+        Function::new_native_with_env(store, env.clone(), todo_single4),
+    );
+    exports.insert(
+        "get_some",
+        Function::new_native_with_env(store, env.clone(), todo_single5),
+    );
+    exports.insert(
+        "get_left",
+        Function::new_native_with_env(store, env.clone(), todo_single5),
+    );
+    exports.insert(
+        "get_right",
+        Function::new_native_with_env(store, env.clone(), todo_single5),
+    );
+    exports.insert(
+        "abs",
+        Function::new_native_with_env(store, env.clone(), todo_single5),
+    );
+    exports.insert(
+        "lt",
+        Function::new_native_with_env(store, env.clone(), todo_single5),
+    );
+    exports.insert(
+        "gt",
+        Function::new_native_with_env(store, env.clone(), todo_single5),
+    );
+    exports.insert(
+        "closure",
+        Function::new_native_with_env(store, env.clone(), todo_single4),
+    );
     imports.register("env", exports);
     imports
+}
+fn todo_single(_c: &Context) -> i64 {
+    todo!();
+}
+fn nil(c: &Context) -> VMResult<i64> {
+    let v = Value::List(Vector::new());
+    let bumped = c.bump(v);
+    conversions::to_i64(bumped)
+}
+fn todo_single2(_c: &Context, _d: i64, _x: i32) -> i64 {
+    todo!();
+}
+fn todo_single3(_c: &Context, _d: i64) -> i32 {
+    1
+}
+fn todo_single4(_c: &Context, _d: i32) -> i64 {
+    todo!();
+}
+fn todo_single5(_c: &Context, _d: i64) -> i64 {
+    todo!();
+}
+fn todo_single6(_c: &Context, _d: i64, _x: i64) -> i64 {
+    todo!();
 }

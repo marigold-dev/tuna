@@ -23,7 +23,7 @@ let compile_constant value =
 let rec compile_instruction instruction =
   match instruction with
   | Prim (_, I_UNPAIR, _, _) ->
-    "(call $push (call $cdr (local.tee $1 (call $pop)))) (call $push (call $car (local.get $1)))"
+    "(call $push (call $unpair (call $pop)))"
 
   | Prim (_, I_PAIR, _, _) ->
     "(call $push (call $pair (call $pop) (call $pop)))"
@@ -134,12 +134,12 @@ let rec compile_instruction instruction =
     in
     let if_body =
       Printf.sprintf
-        "(if (then (call $push (call $get_left (local.get $1))) %s) (else (call $push (call $get_right (local.get $1))) %s))"
+        "(if (then %s) (else %s))"
         branch_if_left
         branch_if_right
     in
     Printf.sprintf
-      "(call $is_left (local.tee $1 (call $pop))) %s"
+      "(call $if_left (call $pop)) %s"
       if_body
 
   | Prim (_, I_IF_NONE, [ Seq (_, branch_if_none); Seq (_, branch_if_some) ], _) ->

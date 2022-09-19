@@ -1,2 +1,2 @@
 (cram
- (deps ../bin/tunacc_test.exe))
+ (deps ../bin/tunacc_test.exe ./increment.tz))

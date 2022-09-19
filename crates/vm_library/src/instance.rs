@@ -1,11 +1,16 @@
-use std::ptr::NonNull;
+use std::{
+    cell::RefCell,
+    ptr::NonNull,
+    rc::Rc,
+    sync::{Arc, RwLock},
+};
 
 use slotmap::{DefaultKey, KeyData};
 use wasmer::{Instance, Module, NativeFunc};
 
 use crate::{
     conversions,
-    env::Context,
+    env::{Context, Inner},
     errors::{vm::VmError, VMResult},
     managed::{imports::make_imports, value::Value},
 };
@@ -17,21 +22,23 @@ pub fn call_module(
     params: DefaultKey,
     initial_storage: DefaultKey,
 ) -> VMResult<DefaultKey> {
-    let mut env = Box::new(Context {
-        instance: None,
-        pusher: None,
-        gas_limit,
-    });
+    let mut env = Context {
+        inner: Rc::new(RefCell::new(Inner {
+            instance: None,
+            pusher: None,
+            gas_limit,
+        })),
+    };
     let store = m.store();
 
     let imports = make_imports(&env, store);
     let mut instance = Box::new(Instance::new(&m, &imports).unwrap());
-    env.instance = NonNull::new(instance.as_mut());
-    let pusher = instance.exports.get_native_function("push").unwrap();
-    env.pusher = NonNull::new({
-        let mut fun = Box::new(pusher);
-        fun.as_mut()
-    });
+    // env.instance = NonNull::new(instance.as_mut());
+    // let pusher = instance.exports.get_native_function("push").unwrap();
+    // env.pusher = NonNull::new({
+    //     let mut fun = Box::new(pusher);
+    //     fun.as_mut()
+    // });
     let main: NativeFunc<i64, i64> = instance.exports.get_native_function("main").unwrap();
     let arg = env.bump(Value::Pair {
         fst: params,

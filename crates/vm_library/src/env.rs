@@ -4,25 +4,49 @@ use crate::{
     managed::value::Value,
 };
 use slotmap::{DefaultKey, Key};
-use std::ptr::NonNull;
-use wasmer::{Instance, WasmerEnv};
+use std::{
+    cell::{Ref, RefCell},
+    ptr::NonNull,
+    rc::Rc,
+    sync::Arc,
+};
+use wasmer::{HostEnvInitError, Instance, WasmerEnv};
 use wasmer_middlewares::metering::{get_remaining_points, set_remaining_points, MeteringPoints};
 
-#[derive(WasmerEnv, Clone)]
+#[derive(Debug)]
 pub struct Context {
+    pub inner: Rc<RefCell<Inner>>,
+}
+
+#[derive(Debug)]
+pub struct Inner {
     pub instance: Option<NonNull<Instance>>,
     pub pusher: Option<NonNull<wasmer::NativeFunc<i64, ()>>>,
     pub gas_limit: u64,
 }
+
+impl Clone for Context {
+    fn clone(&self) -> Self {
+        Context {
+            inner: Rc::clone(&self.inner),
+        }
+    }
+}
+impl WasmerEnv for Context {
+    fn init_with_instance(&mut self, _instance: &Instance) -> Result<(), HostEnvInitError> {
+        Ok(())
+    }
+}
 unsafe impl Send for Context {}
 
 unsafe impl Sync for Context {}
+
 impl Context {
     pub fn with_instance<C, R>(&self, callback: C) -> VMResult<R>
     where
         C: FnOnce(&Instance) -> VMResult<R>,
     {
-        match self.instance {
+        match self.inner.as_ref().borrow_mut().instance {
             Some(instance_ptr) => {
                 let instance_ref = unsafe { instance_ptr.as_ref() };
                 callback(instance_ref)
@@ -31,6 +55,12 @@ impl Context {
                 "instance missing, lifecycle error".to_string(),
             )),
         }
+    }
+    pub fn set_instance(&mut self, wasmer_instance: Option<NonNull<Instance>>) {
+        self.inner.as_ref().borrow_mut().instance = wasmer_instance;
+    }
+    pub fn set_pusher(&mut self, pusher: Option<NonNull<wasmer::NativeFunc<i64, ()>>>) {
+        self.inner.as_ref().borrow_mut().pusher = pusher;
     }
     pub fn get_gas_left(&self) -> u64 {
         self.with_instance(|instance| {
@@ -42,13 +72,14 @@ impl Context {
         .expect("impossible")
     }
 
-    fn set_gas_left(&self, new_value: u64) {
+    pub fn set_gas_left(&self, new_value: u64) {
         self.with_instance(|instance| {
             set_remaining_points(instance, new_value);
             Ok(())
         })
         .expect("impossible")
     }
+
     pub fn update_gas(&self, cost: u64) -> VMResult<()> {
         let gas_left = self.get_gas_left();
         if cost > gas_left {
@@ -60,14 +91,14 @@ impl Context {
         }
     }
     pub fn push_value(&self, value: i64) -> VMResult<()> {
-        match self.pusher {
+        match self.inner.as_ref().borrow_mut().pusher {
             Some(instance_ptr) => {
                 let func = unsafe { instance_ptr.as_ref() };
                 func.call(value)
                     .map_err(|x| VmError::RuntimeErr(x.to_string()))
             }
             None => Err(VmError::InstantiationErr(
-                "instance missing, lifecycle error".to_string(),
+                "pusher missing, lifecycle error".to_string(),
             )),
         }
     }

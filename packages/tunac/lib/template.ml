@@ -14,6 +14,7 @@ let import_list =
     Printf.sprintf "(import \"env\" \"%s\" (func $%s %s))" name name type_
   in
   [ func ref_ref__ref "pair"
+  ; func ref__ref  "unpair"
   ; func ref_ref__ref "z_add"
   ; func ref_ref__ref "z_sub"
   ; func ref_ref__ref "compare"
@@ -28,7 +29,7 @@ let import_list =
   ; func ref_ref__ref "mem"
   ; func ref_ref_ref__ref "update"
   ; func ref_func__ref "iter"
-  ; func ref__i32 "is_left"
+  ; func ref__i32 "if_left"
   ; func ref__i32 "is_none"
   ; func ref__ref "isnat"
   ; func ref__ref "not"

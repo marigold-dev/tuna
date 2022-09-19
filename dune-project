@@ -10,6 +10,8 @@
 
 (generate_opam_files true)
 
+(name tunac)
+
 (package
  (name tunac)
  (synopsis "michelson to wasm compiler")
