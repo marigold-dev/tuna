@@ -25,6 +25,7 @@ Compile increment contract
   (import "env" "isnat" (func $isnat (param i64) (result i64)))
   (import "env" "not" (func $not (param i64) (result i64)))
   (import "env" "or" (func $or (param i64 i64) (result i64)))
+  (import "env" "and" (func $and (param i64 i64) (result i64)))
   (import "env" "deref_bool" (func $deref_bool (param i64) (result i32)))
   (import "env" "neq" (func $neq (param i64) (result i64)))
   (import "env" "failwith" (func $failwith (param i64)))
@@ -181,7 +182,7 @@ Compile increment contract
     (func $main (param $v1 i64) (result i64)
       (local $1 i64)
       (call $push (local.get $v1))
-      (call $unpair (call $pop))
+      (call $unpair (call $pop)) ;; implicit return
   (call $if_left (call $pop)) (if (then (call $if_left (call $pop)) (if (then (call $swap)
   (call $push (call $z_sub (call $pop) (call $pop)))) (else (call $push (call $z_add (call $pop) (call $pop)))))) (else (call $drop (i32.const 2))
   (call $push (call $const (i32.const 0))) (; 0 ;)))

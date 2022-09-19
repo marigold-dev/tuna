@@ -37,6 +37,7 @@ let import_list =
   ; func ref__ref "isnat"
   ; func ref__ref "not"
   ; func ref_ref__ref "or"
+  ; func ref_ref__ref "and"
   ; func ref__i32 "deref_bool"
   ; func ref__ref "neq"
   ; func ref__ "failwith"
