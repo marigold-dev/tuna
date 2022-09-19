@@ -23,7 +23,7 @@ let compile_constant value =
 let rec compile_instruction instruction =
   match instruction with
   | Prim (_, I_UNPAIR, _, _) ->
-    "(call $push (call $unpair (call $pop)))"
+    "(call $unpair (call $pop))"
 
   | Prim (_, I_PAIR, _, _) ->
     "(call $push (call $pair (call $pop) (call $pop)))"
@@ -115,12 +115,8 @@ let rec compile_instruction instruction =
       |> List.map compile_instruction
       |> String.concat "\n"
     in
-    let list_unpack =
-      "(call $push (call $tail (local.get $1))) (call $push (call $head (local.get $1)))"
-    in
     Printf.sprintf
-      "(call $is_cons (local.tee $1 (call $pop))) (if (then %s %s) (else %s))"
-        list_unpack
+      "(call $if_cons (call $pop)) (if (then %s) (else %s))"
         branch_if_cons
         branch_if_nil
 
@@ -157,7 +153,7 @@ let rec compile_instruction instruction =
       |> String.concat "\n"
     in
     Printf.sprintf
-      "(call $is_none (local.tee $1 (call $pop))) (if (then %s) (else (call $push (call $get_some (local.get $1))) %s))"
+      "(call $if_none (call $pop)) (if (then %s) (else %s))"
       branch_if_none
       branch_if_some
 
@@ -267,7 +263,7 @@ let rec compile_instruction instruction =
     "(call $push (call $empty_big_map))"
 
   | Prim (_, I_GET_AND_UPDATE, _, _) ->
-    "(call $push (call $cdr (local.tee $1 (call $get_and_update (call $pop) (call $pop) (call $pop))))) (call $push (call $car (local.get $1)))"
+    "(call $get_and_update (call $pop) (call $pop) (call $pop))"
 
   | Prim (_, I_INT, _, _) ->
     "(call $push (call $int (call $pop)))"
@@ -306,7 +302,6 @@ let rec compile_instruction instruction =
     (* 'ty : mutez : contract 'ty : A -> operation : A *)
     "(call $push (call $transfer_tokens (call $pop) (call $pop) (call $pop)))"
 
-
   | Prim (_, I_LOOP, [ Seq (_, body) ], _) ->
     let body =
       body
@@ -326,7 +321,7 @@ let rec compile_instruction instruction =
     in
     let loop_name = gen_symbol "$loop_left" in
     Printf.sprintf
-      "(loop %s (call $is_left (local.tee $1 (call $pop))) br_if %s (call $get_left (local.get $1)) %s)"
+      "(loop %s (call $if_left (call $pop)) br_if %s %s)"
       loop_name loop_name body
 
   | Prim (_, I_ITER, [ Seq (_, body) ], _) ->
