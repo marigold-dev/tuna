@@ -48,6 +48,8 @@ Compile increment contract
   (import "env" "get_and_update" (func $get_and_update (param i64 i64 i64)))
   (import "env" "read_ticket" (func $read_ticket (param i64)))
   (import "env" "ticket" (func $ticket (param i64 i64) (result i64)))
+  (import "env" "join_tickets" (func $join_tickets (param i64) (result i64)))
+  (import "env" "split_ticket" (func $split_ticket (param i64 i64) (result i64)))
   (import "env" "amount" (func $amount (result i64)))
   
     (global $mode i32 (i32.const 0))

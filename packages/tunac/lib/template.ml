@@ -60,6 +60,8 @@ let import_list =
   ; func ref_ref_ref__ "get_and_update"
   ; func ref__ "read_ticket"
   ; func ref_ref__ref "ticket"
+  ; func ref__ref "join_tickets"
+  ; func ref_ref__ref "split_ticket"
   ; func const "amount"
   ]
   |> String.concat "\n"
