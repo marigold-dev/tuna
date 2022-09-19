@@ -4,6 +4,7 @@ let import_list =
   let ref_ref_ref__ref =
     "(param i64 i64 i64) (result i64)"
   in
+  let ref_ref_ref__ = "(param i64 i64 i64)" in
   let ref__ref = "(param i64) (result i64)" in
   let ref__i32 = "(param i64) (result i32)" in
   let i32__ref = "(param i32) (result i64)" in
@@ -14,7 +15,7 @@ let import_list =
     Printf.sprintf "(import \"env\" \"%s\" (func $%s %s))" name name type_
   in
   [ func ref_ref__ref "pair"
-  ; func ref__ref  "unpair"
+  ; func ref__ "unpair"
   ; func ref_ref__ref "z_add"
   ; func ref_ref__ref "z_sub"
   ; func ref_ref__ref "compare"
@@ -22,6 +23,7 @@ let import_list =
   ; func ref__ref "cdr"
   ; func ref__ref "some"
   ; func const "nil"
+  ; func const "none"
   ; func const "zero"
   ; func const "empty_set"
   ; func const "sender"
@@ -30,13 +32,14 @@ let import_list =
   ; func ref_ref_ref__ref "update"
   ; func ref_func__ref "iter"
   ; func ref__i32 "if_left"
-  ; func ref__i32 "is_none"
+  ; func ref__i32 "if_none"
+  ; func ref__i32 "if_cons"
   ; func ref__ref "isnat"
   ; func ref__ref "not"
   ; func ref_ref__ref "or"
+  ; func ref_ref__ref "and"
   ; func ref__i32 "deref_bool"
   ; func ref__ref "neq"
-  ; func i32__ref "string"
   ; func ref__ "failwith"
   ; func i32_ref__ref "get_n"
   ; func ref_ref__ref "exec"
@@ -44,10 +47,22 @@ let import_list =
   ; func i32__ref "const"
   ; func ref__ref "get_some"
   ; func ref__ref "abs"
+  ; func ref__ref "eq"
+  ; func ref__ref "gt"
   ; func ref__ref "lt"
-  ; func ref__ref "get_left"
-  ; func ref__ref "get_right"
   ; func i32__ref "closure"
+  ; func ref__ref "left"
+  ; func ref__ref "right"
+  ; func ref_ref__ref "cons"
+  ; func ref_ref_ref__ref "transfer_tokens"
+  ; func ref__ref "address"
+  ; func const "self"
+  ; func ref_ref_ref__ "get_and_update"
+  ; func ref__ "read_ticket"
+  ; func ref_ref__ref "ticket"
+  ; func ref__ref "join_tickets"
+  ; func ref_ref__ref "split_ticket"
+  ; func const "amount"
   ]
   |> String.concat "\n"
 

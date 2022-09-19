@@ -23,7 +23,7 @@ let compile_constant value =
 let rec compile_instruction instruction =
   match instruction with
   | Prim (_, I_UNPAIR, _, _) ->
-    "(call $push (call $unpair (call $pop)))"
+    "(call $unpair (call $pop)) ;; implicit return"
 
   | Prim (_, I_PAIR, _, _) ->
     "(call $push (call $pair (call $pop) (call $pop)))"
@@ -71,10 +71,13 @@ let rec compile_instruction instruction =
     "(call $push (call $apply (call $pop) (call $pop)))"
 
   | Prim (_, I_FAILWITH, _, _) ->
-    "(call $failwith (call $pop))"
+    "(call $failwith (call $pop)) unreachable"
 
   | Prim (_, I_GE, _, _) ->
-    "(call $push (call $ge))"
+    "(call $push (call $ge (call $pop)))"
+
+  | Prim (_, I_GT, _, _) ->
+    "(call $push (call $gt (call $pop)))"
 
   | Prim (_, I_GET, [], _) ->
     "(call $push (call $map_get (call $pop) (call $pop)))"
@@ -112,12 +115,8 @@ let rec compile_instruction instruction =
       |> List.map compile_instruction
       |> String.concat "\n"
     in
-    let list_unpack =
-      "(call $push (call $tail (local.get $1))) (call $push (call $head (local.get $1)))"
-    in
     Printf.sprintf
-      "(call $is_cons (local.tee $1 (call $pop))) (if (then %s %s) (else %s))"
-        list_unpack
+      "(call $if_cons (call $pop)) (if (then %s) (else %s))"
         branch_if_cons
         branch_if_nil
 
@@ -154,7 +153,7 @@ let rec compile_instruction instruction =
       |> String.concat "\n"
     in
     Printf.sprintf
-      "(call $is_none (local.tee $1 (call $pop))) (if (then %s) (else (call $push (call $get_some (local.get $1))) %s))"
+      "(call $if_none (call $pop)) (if (then %s) (else %s))"
       branch_if_none
       branch_if_some
 
@@ -264,7 +263,7 @@ let rec compile_instruction instruction =
     "(call $push (call $empty_big_map))"
 
   | Prim (_, I_GET_AND_UPDATE, _, _) ->
-    "(call $push (call $cdr (local.tee $1 (call $get_and_update (call $pop) (call $pop) (call $pop))))) (call $push (call $car (local.get $1)))"
+    "(call $get_and_update (call $pop) (call $pop) (call $pop)) ;; implicit update"
 
   | Prim (_, I_INT, _, _) ->
     "(call $push (call $int (call $pop)))"
@@ -293,6 +292,16 @@ let rec compile_instruction instruction =
   | Prim (_, I_CONTRACT, _, _) ->
     "(call $push (call $contract (call $pop)))"
 
+  | Prim (_, I_IMPLICIT_ACCOUNT, _, _) ->
+    "(call $push (call $implicit_account (call $pop)))"
+
+  | Prim (_, I_LEVEL, _, _) ->
+    "(call $push (call $level))"
+
+  | Prim (_, I_TRANSFER_TOKENS, _, _) ->
+    (* 'ty : mutez : contract 'ty : A -> operation : A *)
+    "(call $push (call $transfer_tokens (call $pop) (call $pop) (call $pop)))"
+
   | Prim (_, I_LOOP, [ Seq (_, body) ], _) ->
     let body =
       body
@@ -312,7 +321,7 @@ let rec compile_instruction instruction =
     in
     let loop_name = gen_symbol "$loop_left" in
     Printf.sprintf
-      "(loop %s (call $is_left (local.tee $1 (call $pop))) br_if %s (call $get_left (local.get $1)) %s)"
+      "(loop %s (call $if_left (call $pop)) br_if %s %s)"
       loop_name loop_name body
 
   | Prim (_, I_ITER, [ Seq (_, body) ], _) ->
@@ -348,6 +357,59 @@ let rec compile_instruction instruction =
     let name = gen_symbol "$lambda" in
     let lambda = compile_lambda name body in
     Printf.sprintf "(call $push (call $closure (i32.const %d) (; %s ;) ))" lambda name
+
+  | Prim (_, I_BLAKE2B, _, _) ->
+    "(call $push (call $blake2b (call $pop)))"
+
+  | Prim (_, I_CHECK_SIGNATURE, _, _) ->
+    (* key : signature : bytes : A -> bool : A *)
+    "(call $push (call $check_signature (call $pop) (call $pop) (call $pop)))"
+
+  | Prim (_, I_HASH_KEY, _, _) ->
+    (* key : A -> key_hash : A *)
+    "(call $push (call $hash_key (call $pop)))"
+
+  | Prim (_, I_KECCAK, _, _) ->
+    (* bytes : A -> bytes : A *)
+    "(call $push (call $keccak (call $pop)))"
+
+  | Prim (_, I_PAIRING_CHECK, _, _) ->
+    (* list ( pair bls12_381_g1 bls12_381_g2 ) : A -> bool : A *)
+    "(call $push (call $pairing_check (call $pop)))"
+
+  | Prim (_, I_SHA256, _, _) ->
+    (* bytes : A -> bytes : A *)
+    "(call $push (call $sha256 (call $pop)))"
+
+  | Prim (_, I_SHA3, _, _) ->
+    (* bytes : A -> bytes : A *)
+    "(call $push (call $sha3 (call $pop)))"
+
+  | Prim (_, I_SHA512, _, _) ->
+    (* bytes : A -> bytes : A *)
+    "(call $push (call $sha512 (call $pop)))"
+
+  | Prim (_, I_CAST, _, _) ->
+    (* Ignored *) ""
+
+  | Prim (_, I_CONCAT, _, _) ->
+    "(local.tee $1 (call $pop)) (call $is_list (local.get $1)) (if (then (call $push (call $concat (local.get $1)))) (else (call $push (call $concat (local.get $1) (call $pop)))))"
+
+  | Prim (_, I_TICKET, _, _) ->
+    (* pair ( ticket cty ) ( ticket cty ) : A -> option (ticket cty) : A *)
+    "(call $push (call $ticket (call $pop) (call $pop)))"
+
+  | Prim (_, I_SPLIT_TICKET, _, _) ->
+    (* ticket cty : pair nat nat : A -> option ( pair ( ticket cty ) ( ticket cty ) ) : A *)
+    "(call $push (call $split_ticket (call $pop) (call $pop)))"
+
+  | Prim (_, I_READ_TICKET, _, _) ->
+    (* ticket cty : A -> pair address cty nat : A *)
+    "(call $read_ticket (call $pop)) ;; implicit return"
+
+  | Prim (_, I_JOIN_TICKETS, _, _) ->
+    (* pair ( ticket cty ) ( ticket cty ) : A -> option ( ticket cty ) : A *)
+    "(call $push (call $join_tickets (call $pop)))"
 
   | Prim (_, prim, _, _) ->
     failwith ("Unsupported primitive " ^ (Michelson_primitives.string_of_prim prim))

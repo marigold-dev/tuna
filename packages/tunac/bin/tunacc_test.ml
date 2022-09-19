@@ -1,7 +1,7 @@
 let read_file name =
   let f = open_in name in
-  let buf = Bytes.create 10000 in
-  let size = input f buf 0 10000 in
+  let buf = Bytes.create 100000 in
+  let size = input f buf 0 100000 in
   Bytes.to_string @@ Bytes.sub buf 0 size
 
 let () =
