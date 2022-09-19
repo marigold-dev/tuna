@@ -1,3 +1,12 @@
 (executable
  (name tunacc_test)
- (libraries))
+ (libraries
+  tunac
+  yojson
+  core
+  core_unix
+  core_unix.command_unix
+  core_bench
+  wasm)
+ (preprocess
+  (pps ppx_deriving.ord ppx_deriving.show ppx_deriving.eq ppx_yojson_conv)))
