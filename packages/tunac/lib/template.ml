@@ -36,7 +36,6 @@ let import_list =
   ; func ref_ref__ref "or"
   ; func ref__i32 "deref_bool"
   ; func ref__ref "neq"
-  ; func i32__ref "string"
   ; func ref__ "failwith"
   ; func i32_ref__ref "get_n"
   ; func ref_ref__ref "exec"
@@ -48,6 +47,12 @@ let import_list =
   ; func ref__ref "get_left"
   ; func ref__ref "get_right"
   ; func i32__ref "closure"
+  ; func ref__ref "left"
+  ; func ref__ref "right"
+  ; func ref_ref__ref "cons"
+  ; func ref_ref_ref__ref "transfer_tokens"
+  ; func ref__ref "address"
+  ; func const "self"
   ]
   |> String.concat "\n"
 

@@ -71,7 +71,7 @@ let rec compile_instruction instruction =
     "(call $push (call $apply (call $pop) (call $pop)))"
 
   | Prim (_, I_FAILWITH, _, _) ->
-    "(call $failwith (call $pop))"
+    "(call $failwith (call $pop)) unreachable"
 
   | Prim (_, I_GE, _, _) ->
     "(call $push (call $ge (call $pop)))"
