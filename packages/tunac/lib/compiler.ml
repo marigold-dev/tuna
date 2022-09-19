@@ -328,7 +328,7 @@ let rec compile_instruction instruction =
     let name = gen_symbol "$iter_lambda" in
     let lambda = compile_lambda name body in
     Printf.sprintf
-      "(call $push (call $iter (call $pop) (table.get $closures (i32.const %d) (; %s ;) )))"
+      "(call $push (call $iter (call $pop) (i32.const %d) (; %s ;) ))"
       lambda
       name
 
@@ -336,7 +336,7 @@ let rec compile_instruction instruction =
     let name = gen_symbol "$map_lambda" in
     let lambda = compile_lambda name body in
     Printf.sprintf
-      "(call $push (call $map (call $pop) (table.get $closures (i32.const %d) (; %s ;) )))"
+      "(call $push (call $map (call $pop) (i32.const %d) (; %s ;) ))"
       lambda
       name
 
