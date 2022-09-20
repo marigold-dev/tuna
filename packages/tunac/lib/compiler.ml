@@ -295,3 +295,69 @@ let compile code =
           body
       , Array.of_list !constants )
   | _ -> Error `Unexpected_error
+
+let rec compile_value parsed =
+  let open Helpers.Result.Let_syntax in
+  let open Values.V in
+  match parsed with
+  | Prim (_, D_Unit, _, _) -> Ok Unit
+  | Prim (_, D_False, _, _) -> Ok (Bool 0)
+  | Prim (_, D_True, _, _) -> Ok (Bool 1)
+  | Prim (_, D_None, _, _) -> Ok (Option None)
+  | Prim (_, D_Some, [ value ], _) ->
+    let* value = compile_value value in
+    Ok (Option (Some value))
+  | Prim (_, D_Left, [ value ], _) ->
+    let* value = compile_value value in
+    Ok (Union (Left value))
+  | Prim (_, D_Right, [ value ], _) ->
+    let* value = compile_value value in
+    Ok (Union (Right value))
+  | Prim (_, D_Pair, [ fst; snd ], _) ->
+    let* fst = compile_value fst in
+    let* snd = compile_value snd in
+    Ok (Pair (fst, snd))
+  | Int (_, z) -> Ok (Values.V.Int z)
+  | String (_, s) -> Ok (Values.V.String s)
+  | Bytes (_, b) -> Ok (Values.V.Bytes b)
+  | Seq (_, Prim (_, D_Elt, _, _) :: _) -> compile_map parsed
+    (* TODO: sets have the same representation as lists, types should help disambiguate. *)
+  | Seq (_, elements) ->
+    let rec aux elts =
+      match elts with
+      | elt :: elts ->
+        let* elt = compile_value elt in
+        let* lst = aux elts in
+        Ok (elt :: lst)
+      | [] -> Ok []
+    in
+    let* elements = aux elements in
+    Ok (Values.V.List elements)
+  | _ -> Error `Unexpected_error
+
+and compile_map parsed =
+  let open Helpers.Result.Let_syntax in
+  match parsed with
+  | Seq (_, elements) ->
+    let rec aux m elts =
+      match elts with
+      | Prim (_, D_Elt, [ key; value ], _) :: elts ->
+        let* key = compile_value key in
+        let* value = compile_value value in
+        let m = Values.Map.add key value m in
+        aux m elts
+      | [] -> Ok m
+      | _ -> Error `Unexpected_error
+    in
+    let* m = aux Values.Map.empty elements in
+    Ok (Values.V.Map m)
+  | _ -> assert false
+
+let compile_value expr =
+  let open Helpers.Result.Let_syntax in
+  let* parsed =
+    match Parser.parse_expr expr with
+    | Ok expr -> Ok (root expr)
+    | Error (`Parsing_error _ | `Prim_parsing_error _) as err -> err
+  in
+  compile_value parsed
