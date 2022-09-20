@@ -1,6 +1,6 @@
 let import_list =
   let ref_ref__ref = "(param i64 i64) (result i64)" in
-  let ref_func__ref = "(param i64 funcref) (result i64)" in
+  let ref_i32__ref = "(param i64 i32) (result i64)" in
   let ref_ref_ref__ref =
     "(param i64 i64 i64) (result i64)"
   in
@@ -30,7 +30,8 @@ let import_list =
   ; func ref_ref__ref "map_get"
   ; func ref_ref__ref "mem"
   ; func ref_ref_ref__ref "update"
-  ; func ref_func__ref "iter"
+  ; func ref_i32__ref "iter"
+  ; func ref_i32__ref "map"
   ; func ref__i32 "if_left"
   ; func ref__i32 "if_none"
   ; func ref__i32 "if_cons"
