@@ -4,12 +4,7 @@ use crate::{
     managed::value::Value,
 };
 use slotmap::{DefaultKey, Key};
-use std::{
-    cell::{Ref, RefCell},
-    ptr::NonNull,
-    rc::Rc,
-    sync::Arc,
-};
+use std::{cell::RefCell, ptr::NonNull, rc::Rc};
 use wasmer::{HostEnvInitError, Instance, WasmerEnv};
 use wasmer_middlewares::metering::{get_remaining_points, set_remaining_points, MeteringPoints};
 
