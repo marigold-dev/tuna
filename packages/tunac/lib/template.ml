@@ -1,9 +1,8 @@
 let import_list =
+  let ref_unit = "(param i64 ) (result)" in
   let ref_ref__ref = "(param i64 i64) (result i64)" in
   let ref_i32__ref = "(param i64 i32) (result i64)" in
-  let ref_ref_ref__ref =
-    "(param i64 i64 i64) (result i64)"
-  in
+  let ref_ref_ref__ref = "(param i64 i64 i64) (result i64)" in
   let ref_ref_ref__ = "(param i64 i64 i64)" in
   let ref__ref = "(param i64) (result i64)" in
   let ref__i32 = "(param i64) (result i32)" in
@@ -14,7 +13,8 @@ let import_list =
   let func type_ name =
     Printf.sprintf "(import \"env\" \"%s\" (func $%s %s))" name name type_
   in
-  [ func ref_ref__ref "pair"
+  [ func ref_unit "dup_host"
+  ; func ref_ref__ref "pair"
   ; func ref__ "unpair"
   ; func ref_ref__ref "z_add"
   ; func ref_ref__ref "z_sub"
@@ -125,7 +125,7 @@ let base t =
 
   (func $dup (param $n i32) (result)
     (i64.load (i32.mul (i32.const 8) (i32.add (global.get $sp) (local.get $n))))
-    (call $push))
+    (call $dup_host))
 
   (func $swap (param) (result)
     (local $v1 i64)
@@ -209,6 +209,8 @@ let base t =
 
   (export "push" (func $push))
   (export "pop" (func $push))
-  (export "main" (func $main)))
+  (export "main" (func $main))
+  (export "closures" (table $closures))
+  )
 |}
     import_list t

@@ -12,7 +12,7 @@ let make module_ constants =
     match m.it with
     | Textual m ->
       Wasm.Valid.check_module m;
-      Ok { module_  ; constants }
+      Ok { module_; constants }
     | Encoded _ | Quoted _ -> Error `Invalid_module
   with Wasm.Parse.Syntax (at, msg) | Wasm.Valid.Invalid (at, msg) ->
     Format.eprintf "Module validation error at %d:%d - %d:%d: %s" at.left.line
