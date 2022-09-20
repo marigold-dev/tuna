@@ -5,19 +5,19 @@ use crate::{
 };
 use slotmap::{DefaultKey, Key};
 use std::{cell::RefCell, ptr::NonNull, rc::Rc};
-use wasmer::{HostEnvInitError, Instance, WasmerEnv};
+use wasmer::{HostEnvInitError, Instance, Table, WasmerEnv};
 use wasmer_middlewares::metering::{get_remaining_points, set_remaining_points, MeteringPoints};
 
-#[derive(Debug)]
 pub struct Context {
     pub inner: Rc<RefCell<Inner>>,
 }
 
-#[derive(Debug)]
 pub struct Inner {
     pub instance: Option<NonNull<Instance>>,
     pub pusher: Option<NonNull<wasmer::NativeFunc<i64, ()>>>,
     pub gas_limit: u64,
+    pub call_unit: Option<NonNull<wasmer::NativeFunc<i64, ()>>>,
+    pub call: Option<NonNull<wasmer::NativeFunc<i64, i64>>>,
 }
 
 impl Clone for Context {
@@ -56,6 +56,13 @@ impl Context {
     }
     pub fn set_pusher(&mut self, pusher: Option<NonNull<wasmer::NativeFunc<i64, ()>>>) {
         self.inner.as_ref().borrow_mut().pusher = pusher;
+    }
+
+    pub fn set_call_unit(&mut self, f: Option<NonNull<wasmer::NativeFunc<i64, ()>>>) {
+        self.inner.as_ref().borrow_mut().call_unit = f;
+    }
+    pub fn set_call(&mut self, f: Option<NonNull<wasmer::NativeFunc<i64, i64>>>) {
+        self.inner.as_ref().borrow_mut().call = f;
     }
     pub fn get_gas_left(&self) -> u64 {
         self.with_instance(|instance| {
@@ -113,6 +120,13 @@ impl Context {
 
         arena
             .remove(value)
+            .map_or_else(|| Err(VmError::RuntimeErr("Value doesnt exist".into())), Ok)
+    }
+    pub fn get_ref(&self, value: DefaultKey) -> VMResult<&Value> {
+        let arena = unsafe { &mut ARENA };
+
+        arena
+            .get(value)
             .map_or_else(|| Err(VmError::RuntimeErr("Value doesnt exist".into())), Ok)
     }
 }

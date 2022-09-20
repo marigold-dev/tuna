@@ -80,7 +80,22 @@ let base t =
   (global $sh_sp (mut i32) (i32.const 1000)) ;;shadow_stack stack pointer
 
   (global $__stack_base i32 (i32.const 32768))
+  (type $callback_t (func (param i64) (result i64)))
 
+  (func $call_callback (param $idx i32)
+                                               (param $arg1 i64)
+                                               (result i64)
+    (call_indirect (type $callback_t) 
+                   (local.get $arg1)
+                   (local.get $idx)))
+  (type $callback_t_unit (func (param i64) (result)))
+
+  (func $call_callback_unit (param $idx i32)
+                          (param $arg1 i64)
+                          (result )
+                     (call_indirect (type $callback_t_unit) 
+                                    (local.get $arg1)
+                                    (local.get $idx)))
   (func $dip (param $n i32) (result)
     (local $stop i32)
     (local $sp' i32)
@@ -211,6 +226,8 @@ let base t =
   (export "pop" (func $push))
   (export "main" (func $main))
   (export "closures" (table $closures))
+  (export "call_callback" (func $call_callback))
+  (export "call_callback_unit" (func $call_callback_unit))
   )
 |}
     import_list t

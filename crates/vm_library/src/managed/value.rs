@@ -252,7 +252,7 @@ impl<'de> Visitor<'de> for ValueVisitor {
                     )
                 }
                 "List" => {
-                    let elem = seq.next_element::<Vector<Value>>()?;
+                    let elem = seq.next_element::<Vec<Value>>()?;
                     elem.map_or_else(
                         || {
                             Err(serde::de::Error::invalid_type(
@@ -260,7 +260,7 @@ impl<'de> Visitor<'de> for ValueVisitor {
                                 &"Value enum",
                             ))
                         },
-                        |x| Ok(Value::List(x)),
+                        |x| Ok(Value::List(x.into_iter().rev().collect())),
                     )
                 }
                 "Map" => {
@@ -430,7 +430,7 @@ impl Serialize for Value {
             List(lst) => {
                 let mut seq = serializer.serialize_tuple(3)?;
                 seq.serialize_element("List")?;
-                seq.serialize_element(&lst)?;
+                seq.serialize_element(&lst.iter().rev().collect::<Vec<&Value>>())?;
                 seq.end()
             }
         }

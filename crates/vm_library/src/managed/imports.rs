@@ -9,7 +9,7 @@ use slotmap::{DefaultKey, Key, KeyData};
 use wasmer::{Exports, Function, ImportObject, Store};
 
 use super::value::*;
-use crate::conversions;
+use crate::{arena::PREDEF, conversions};
 use crate::{
     env::Context,
     errors::{ffi::FFIError, vm::VmError, VMResult},
@@ -86,14 +86,16 @@ pub fn pair(env: &Context, value1: Value, value2: Value) -> VMResult<i64> {
     let key = env.bump(res);
     conversions::to_i64(key)
 }
-pub fn unpair(env: &Context, value: Value) -> VMResult<i64> {
+pub fn unpair(env: &Context, value: Value) -> VMResult<()> {
     env.update_gas(300)?;
     match value {
         Value::Pair { fst, snd } => {
             let fst = conversions::to_i64(fst.data().as_ffi())?;
             let snd = conversions::to_i64(snd.data().as_ffi())?;
             env.push_value(snd)?;
-            Ok(fst)
+            env.push_value(fst)?;
+
+            Ok(())
         }
         _ => Err(FFIError::ExternError {
             value,
@@ -394,6 +396,15 @@ where
         _ => Err(VmError::RuntimeErr("illegal argument".to_string())),
     }
 }
+pub const fn call2_mapping<F, A>(f: F) -> impl Fn(&Context, i64, i32) -> VMResult<A>
+where
+    F: Fn(&Context, Value, i32) -> VMResult<A>,
+{
+    move |env, arg, arg2| match env.get(DefaultKey::from(KeyData::from_ffi(arg as u64))) {
+        Ok(x) => f(env, x, arg2),
+        _ => Err(VmError::RuntimeErr("illegal argument".to_string())),
+    }
+}
 pub const fn call2_default<F, A>(f: F) -> impl Fn(&Context, u32, i64) -> VMResult<A>
 where
     F: Fn(&Context, DefaultKey, DefaultKey) -> VMResult<A>,
@@ -526,6 +537,10 @@ pub fn make_imports(env: &Context, store: &Store) -> ImportObject {
         Function::new_native_with_env(store, env.clone(), nil),
     );
     exports.insert(
+        "none",
+        Function::new_native_with_env(store, env.clone(), none),
+    );
+    exports.insert(
         "zero",
         Function::new_native_with_env(store, env.clone(), todo_single),
     );
@@ -597,6 +612,10 @@ pub fn make_imports(env: &Context, store: &Store) -> ImportObject {
         "closure",
         Function::new_native_with_env(store, env.clone(), todo_single4),
     );
+    exports.insert(
+        "dup_host",
+        Function::new_native_with_env(store, env.clone(), dup_host),
+    );
     imports.register("env", exports);
     imports
 }
@@ -604,9 +623,32 @@ fn todo_single(_c: &Context) -> i64 {
     todo!();
 }
 fn nil(c: &Context) -> VMResult<i64> {
-    let v = Value::List(Vector::new());
-    let bumped = c.bump(v);
+    let predef = unsafe { &PREDEF };
+    let nil = predef
+        .get("nil")
+        .map_or_else(|| Err(VmError::RuntimeErr("cant happen".to_string())), Ok)?;
+    let bumped = c.bump(nil.clone());
     conversions::to_i64(bumped)
+}
+fn none(c: &Context) -> VMResult<i64> {
+    let predef = unsafe { &PREDEF };
+    let nil = predef
+        .get("none")
+        .map_or_else(|| Err(VmError::RuntimeErr("cant happen".to_string())), Ok)?;
+    let bumped = c.bump(nil.clone());
+    conversions::to_i64(bumped)
+}
+fn map(env: &Context, V: Value, idx: i32) -> VMResult<i64> {
+    mah
+
+}
+fn dup_host(c: &Context, v: i64) -> VMResult<()> {
+    let v = DefaultKey::from(KeyData::from_ffi(v as u64));
+    let v = c.get_ref(v)?;
+    let cloned = v.clone();
+    let bumped = c.bump(cloned);
+    let conved = conversions::to_i64(bumped)?;
+    c.push_value(conved)
 }
 fn todo_single2(_c: &Context, _d: i64, _x: i32) -> i64 {
     todo!();
