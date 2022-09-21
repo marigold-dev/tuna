@@ -83,15 +83,16 @@ let base t =
   (global $sh_sp (mut i32) (i32.const 1000)) ;;shadow_stack stack pointer
 
   (global $__stack_base i32 (i32.const 32768))
-  (type $callback_t (func (param i64) (result i64)))
 
+  (type $callback_t (func (param i64) (result i64)))
   (func $call_callback (param $arg1 i64) (param $idx i32) (result i64)
     (call_indirect (type $callback_t) (local.get $arg1) (local.get $idx)))
-    (type $callback_t_unit (func (param i64) (result)))
-    (func $call_callback_unit (param $arg1 i64) (param $idx i32) (result )
-      (call_indirect (type $callback_t_unit)
-        (local.get $arg1)
-        (local.get $idx)))
+
+  (type $callback_t_unit (func (param i64) (result)))
+  (func $call_callback_unit (param $arg1 i64) (param $idx i32) (result )
+    (call_indirect (type $callback_t_unit)
+      (local.get $arg1)
+      (local.get $idx)))
 
   (func $dip (param $n i32) (result)
     (local $stop i32)
