@@ -5,11 +5,11 @@
                 (pair %getTotalSupply unit (contract nat))))
         (pair %transfer (address %from) (address %to) (nat %value))) ;
   storage
-    (pair (big_map %ledger address (pair (map %allowances address nat) (nat %balance)))
+    (pair (map %ledger address (pair (map %allowances address nat) (nat %balance)))
           (nat %totalSupply)) ;
   code { NIL operation ;
          LAMBDA
-           (pair address (big_map address (pair (map address nat) nat)) nat)
+           (pair address (map address (pair (map address nat) nat)) nat)
            (pair (map address nat) nat)
            { UNPAIR ;
              SWAP ;
@@ -23,7 +23,7 @@
              DROP } ;
          LAMBDA
            (pair (pair (pair (map address nat) nat) address)
-                 (big_map address (pair (map address nat) nat))
+                 (map address (pair (map address nat) nat))
                  nat)
            nat
            { CAR ; UNPAIR ; CAR ; SWAP ; GET ; IF_NONE { PUSH nat 0 } {} } ;

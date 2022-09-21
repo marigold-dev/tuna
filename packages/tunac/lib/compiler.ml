@@ -3,11 +3,13 @@
 open Tezos_micheline.Micheline
 open Michelson_primitives
 
-type context = { mutable symbol_count : int
-               ; mutable constant_count : int
-               ; mutable constants : (int * Values.t) list
-               ; mutable lambda_count : int
-               ; mutable lambdas : (int * string * string) list }
+type context =
+  { mutable symbol_count : int
+  ; mutable constant_count : int
+  ; mutable constants : (int * Values.t) list
+  ; mutable lambda_count : int
+  ; mutable lambdas : (int * string * string) list
+  }
 
 let gen_symbol ~ctx name =
   let id = ctx.symbol_count in
@@ -76,7 +78,9 @@ let rec compile_instruction ~ctx instruction =
   | Prim (_, I_IF_CONS, [ Seq (_, branch_if_cons); Seq (_, branch_if_nil) ], _)
     ->
     let branch_if_cons =
-      branch_if_cons |> List.map (compile_instruction ~ctx) |> String.concat "\n"
+      branch_if_cons
+      |> List.map (compile_instruction ~ctx)
+      |> String.concat "\n"
     in
     let branch_if_nil =
       branch_if_nil |> List.map (compile_instruction ~ctx) |> String.concat "\n"
@@ -86,10 +90,14 @@ let rec compile_instruction ~ctx instruction =
   | Prim (_, I_IF_LEFT, [ Seq (_, branch_if_left); Seq (_, branch_if_right) ], _)
     ->
     let branch_if_left =
-      branch_if_left |> List.map (compile_instruction ~ctx) |> String.concat "\n"
+      branch_if_left
+      |> List.map (compile_instruction ~ctx)
+      |> String.concat "\n"
     in
     let branch_if_right =
-      branch_if_right |> List.map (compile_instruction ~ctx) |> String.concat "\n"
+      branch_if_right
+      |> List.map (compile_instruction ~ctx)
+      |> String.concat "\n"
     in
     let if_body =
       Printf.sprintf "(if (then %s) (else %s))" branch_if_left branch_if_right
@@ -98,10 +106,14 @@ let rec compile_instruction ~ctx instruction =
   | Prim (_, I_IF_NONE, [ Seq (_, branch_if_none); Seq (_, branch_if_some) ], _)
     ->
     let branch_if_none =
-      branch_if_none |> List.map (compile_instruction ~ctx) |> String.concat "\n"
+      branch_if_none
+      |> List.map (compile_instruction ~ctx)
+      |> String.concat "\n"
     in
     let branch_if_some =
-      branch_if_some |> List.map (compile_instruction ~ctx) |> String.concat "\n"
+      branch_if_some
+      |> List.map (compile_instruction ~ctx)
+      |> String.concat "\n"
     in
     Printf.sprintf "(call $if_none (call $pop)) (if (then %s) (else %s))"
       branch_if_none branch_if_some
@@ -146,7 +158,9 @@ let rec compile_instruction ~ctx instruction =
     compile_instruction ~ctx (Prim (loc, I_DROP, [ Int (loc, Z.one) ], annot))
   | Prim (_, I_DIP, [ Int (_, n); Seq (_, body) ], _) ->
     let n = Z.to_int32 n in
-    let body = body |> List.map (compile_instruction ~ctx) |> String.concat "\n" in
+    let body =
+      body |> List.map (compile_instruction ~ctx) |> String.concat "\n"
+    in
     Printf.sprintf
       "(block %s (call $dip (i32.const %ld)) %s (call $undip (i32.const %ld)))"
       (gen_symbol ~ctx "dip") n body n
@@ -173,20 +187,23 @@ let rec compile_instruction ~ctx instruction =
     (* 'ty : mutez : contract 'ty : A -> operation : A *)
     "(call $push (call $transfer_tokens (call $pop) (call $pop) (call $pop)))"
   | Prim (_, I_LOOP, [ Seq (_, body) ], _) ->
-    let body = body |> List.map (compile_instruction ~ctx) |> String.concat "\n" in
+    let body =
+      body |> List.map (compile_instruction ~ctx) |> String.concat "\n"
+    in
     let loop_name = gen_symbol ~ctx "$loop" in
     Printf.sprintf "(loop %s (call $deref_bool (call $pop)) br_if %s %s)"
       loop_name loop_name body
   | Prim (_, I_LOOP_LEFT, [ Seq (_, body) ], _) ->
-    let body = body |> List.map (compile_instruction ~ctx) |> String.concat "\n" in
+    let body =
+      body |> List.map (compile_instruction ~ctx) |> String.concat "\n"
+    in
     let loop_name = gen_symbol ~ctx "$loop_left" in
     Printf.sprintf "(loop %s (call $if_left (call $pop)) br_if %s %s)" loop_name
       loop_name body
   | Prim (_, I_ITER, [ Seq (_, body) ], _) ->
     let name = gen_symbol ~ctx "$iter_lambda" in
     let lambda = compile_lambda ~ctx name body in
-    Printf.sprintf
-      "(call $push (call $iter (call $pop) (i32.const %d) (; %s ;) ))" lambda
+    Printf.sprintf "(call $iter (call $pop) (i32.const %d) (; %s ;) )" lambda
       name
   | Prim (_, I_MAP, [ Seq (_, body) ], _) ->
     let name = gen_symbol ~ctx "$map_lambda" in
@@ -252,7 +269,9 @@ let rec compile_instruction ~ctx instruction =
   | Seq _ | Int _ | String _ | Bytes _ -> assert false
 
 and compile_lambda ~ctx name body =
-  let body = body |> List.map (compile_instruction ~ctx) |> String.concat "\n" in
+  let body =
+    body |> List.map (compile_instruction ~ctx) |> String.concat "\n"
+  in
   let lambda = Printf.sprintf "(func %s (local $1 i64) %s)" name body in
   let id = ctx.lambda_count in
   ctx.lambda_count <- id + 1;
@@ -273,7 +292,14 @@ let compile code =
         ; Prim (_, K_storage, _, _)
         ; Prim (_, K_code, [ Seq (_, instructions) ], _)
         ] ) ->
-    let ctx = { symbol_count = 0; constant_count = 0; constants = []; lambda_count = 0; lambdas = [] } in
+    let ctx =
+      { symbol_count = 0
+      ; constant_count = 0
+      ; constants = []
+      ; lambda_count = 0
+      ; lambdas = []
+      }
+    in
     let body =
       instructions |> List.map (compile_instruction ~ctx) |> String.concat "\n"
     in
@@ -294,9 +320,9 @@ let compile code =
       , Array.of_list ctx.constants )
   | _ -> Error `Unexpected_error
 
-let rec compile_value parsed =
+let rec compile_value parsed : (Values.t, [> `Unexpected_error ]) result =
   let open Helpers.Result.Let_syntax in
-  let open Values.V in
+  let open Values in
   match parsed with
   | Prim (_, D_Unit, _, _) -> Ok Unit
   | Prim (_, D_False, _, _) -> Ok (Bool 0)
@@ -315,10 +341,11 @@ let rec compile_value parsed =
     let* fst = compile_value fst in
     let* snd = compile_value snd in
     Ok (Pair (fst, snd))
-  | Int (_, z) -> Ok (Values.V.Int z)
-  | String (_, s) -> Ok (Values.V.String s)
-  | Bytes (_, b) -> Ok (Values.V.Bytes b)
-  | Seq (_, Prim (_, D_Elt, _, _) :: _) -> compile_map parsed
+  | Int (_, z) -> Ok (Values.Int z)
+  | String (_, s) -> Ok (Values.String s)
+  | Bytes (_, b) -> Ok (Values.Bytes b)
+  | Seq (_, Prim (_, D_Elt, _, _) :: _) ->
+    compile_map parsed
     (* TODO: sets have the same representation as lists, types should help disambiguate. *)
   | Seq (_, elements) ->
     let rec aux elts =
@@ -330,7 +357,7 @@ let rec compile_value parsed =
       | [] -> Ok []
     in
     let* elements = aux elements in
-    Ok (Values.V.List elements)
+    Ok (Values.List elements)
   | _ -> Error `Unexpected_error
 
 and compile_map parsed =
@@ -349,7 +376,7 @@ and compile_map parsed =
     in
     let* m = aux Values.Map.empty elements in
     Ok (Values.V.Map m)
-  | _ -> assert false
+  | _ -> Error `Unexpected_error
 
 let compile_value expr =
   let open Helpers.Result.Let_syntax in

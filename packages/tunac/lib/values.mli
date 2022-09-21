@@ -23,4 +23,6 @@ end
 and Map : (Helpers.Map.S_with_yojson with type key = V.t)
 and Set : (Helpers.Set.S_with_yojson with type elt = V.t)
 
-include module type of V
+include module type of struct
+  include V
+end
