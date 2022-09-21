@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use wasmer::{wasmparser::Operator, CompilerConfig, Cranelift, Features, Store, Universal};
+use wasmer::{wasmparser::Operator, CompilerConfig, Features, Store, Universal};
 use wasmer_compiler_singlepass::Singlepass;
 use wasmer_middlewares::Metering;
 

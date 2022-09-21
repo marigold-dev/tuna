@@ -1,99 +1,105 @@
-// use std::{
-//     cell::RefCell,
-//     ptr::NonNull,
-//     rc::Rc,
-//     sync::{Arc, RwLock},
-// };
+use std::{cell::RefCell, ptr::NonNull, rc::Rc};
 
-// use slotmap::{DefaultKey, KeyData};
-// use wasmer::{Instance, Module, NativeFunc, Table};
+use slotmap::{DefaultKey, Key, KeyData};
+use wasmer::{Instance, Module};
 
-// use crate::{
-//     conversions,
-//     env::{Context, Inner},
-//     errors::{vm::VmError, VMResult},
-//     managed::{imports::make_imports, value::Value},
-// };
+use crate::{
+    arena::{populate_predef, push_constants, ARENA},
+    compile_store,
+    env::{Context, Inner},
+    errors::{vm::VmError, VMResult},
+    incoming::InvokeManaged,
+    managed::{imports, value::Value},
+    outgoing::{Outgoing, OutgoingManaged},
+};
 
-// // TODO: remove unwraps
-// pub fn call_module(
-//     m: Module,
-//     gas_limit: u64,
-//     params: DefaultKey,
-//     initial_storage: DefaultKey,
-// ) -> VMResult<DefaultKey> {
-//     let mut env = Context {
-//         inner: Rc::new(RefCell::new(Inner {
-//             instance: None,
-//             pusher: None,
-//             gas_limit,
-//             closures: None,
-//         })),
-//     };
-//     let store = m.store();
+pub fn invoke_managed(t: InvokeManaged) -> VMResult<Outgoing> {
+    let arena = unsafe { &mut ARENA };
 
-//     let imports = make_imports(&env, store);
-//     let mut instance = Box::new(Instance::new(&m, &imports).unwrap());
-//     // env.instance = NonNull::new(instance.as_mut());
-//     // let pusher = instance.exports.get_native_function("push").unwrap();
-//     // env.pusher = NonNull::new({
-//     //     let mut fun = Box::new(pusher);
-//     //     fun.as_mut()
-//     // });
-//     let main: NativeFunc<i64, i64> = instance.exports.get_native_function("main").unwrap();
-//     let arg = env.bump(Value::Pair {
-//         fst: params,
-//         snd: initial_storage,
-//     });
-//     let key = conversions::to_i64(arg)?;
-//     let called = main.call(key).unwrap();
-//     Ok(DefaultKey::from(KeyData::from_ffi(called as u64)))
-// }
+    let module: VMResult<Module> = unsafe {
+        Module::deserialize(&compile_store::new_headless(), &t.mod_).map_err(|x| x.into())
+    };
+    let mut env = Context {
+        inner: Rc::new(RefCell::new(Inner {
+            instance: None,
+            pusher: None,
+            gas_limit: 10000,
+            call_unit: None,
+            call: None,
+        })),
+    };
+    populate_predef(t.sender, t.self_addr, t.source);
+    push_constants(t.constants);
+    let module = module?;
+    let store = module.store();
 
-// // #[cfg(test)]
-// // mod test {
-// //     use wasmer::{imports, wat2wasm};
-// //     use wasmer_middlewares::metering::set_remaining_points;
+    let imports = imports::make_imports(&env, store);
+    let instance = Box::from(Instance::new(&module, &imports).map_err(|x| {
+        dbg!(x);
+        VmError::RuntimeErr("Failed to create instance".to_string())
+    })?);
+    let new = NonNull::from(instance.as_ref());
+    let pusher = Box::from(
+        instance
+            .exports
+            .get_native_function::<i64, ()>("push")
+            .map_err(|_| VmError::RuntimeErr("Miscompiled contract".to_string()))?,
+    );
+    let call_unit = Box::from(
+        instance
+            .exports
+            .get_native_function::<(i64, i32), ()>("call_callback_unit")
+            .map_err(|_| VmError::RuntimeErr("Miscompiled contract".to_string()))?,
+    );
+    let call = Box::from(
+        instance
+            .exports
+            .get_native_function::<(i64, i32), i64>("call_callback")
+            .map_err(|_| VmError::RuntimeErr("Miscompiled contract".to_string()))?,
+    );
+    env.set_instance(Some(new));
+    env.set_pusher(Some(NonNull::from(pusher.as_ref())));
+    env.set_call_unit(Some(NonNull::from(call_unit.as_ref())));
+    env.set_call(Some(NonNull::from(call.as_ref())));
 
-// //     use crate::compile_store;
+    env.set_gas_left(t.gas_limit as u64);
 
-// //     use super::*;
-// //     #[test]
-// //     fn testing() {
-// //         let expected = 6;
-// //         let module = wat2wasm(
-// //             br#"
-// //             (module
-// //               (func $main (param $n i64) (result i64)
-// //                 local.get $n
-// //               )
-// //             (export "main" (func $main))
-// //           )
-// //         "#,
-// //         )
-// //         .unwrap();
-// //         #[derive(PartialEq, Debug)]
-// //         pub struct T {
-// //             pub v: String,
-// //             pub z: Option<Box<'static, T>>,
-// //         }
-// //         let ar: Bump = Bump::with_capacity(8000);
-// //         ar.set_allocation_limit(Some(8000));
-// //         let vv = Box::new_in(
-// //             T {
-// //                 v: "String".to_string(),
-// //                 z: None,
-// //             },
-// //             &ar,
-// //         );
-// //         let to_pass = Box::into_raw(vv) as *mut usize;
-// //         let store = compile_store::new_compile_store();
-// //         let module = Module::new(&store, module).unwrap();
-// //         let imports = imports! {};
-// //         let result = Instance::new(&module, &imports).unwrap();
-// //         set_remaining_points(&result, 1000);
-// //         let main: NativeFunc<i64, i64> = result.exports.get_native_function("main").unwrap();
-// //         let res = main.call(to_pass as i64).unwrap();
-// //         assert_eq!(res, to_pass as i64)
-// //     }
-// // }
+    let fst = arena.insert(t.arg);
+    let snd = arena.insert(t.initial_storage);
+    let arg = Value::Pair { fst, snd };
+    let arg = arena.insert(arg).data().as_ffi();
+
+    let caller = instance
+        .exports
+        .get_native_function::<i64, i64>("main")
+        .map_err(|_| VmError::RuntimeErr("Miscompiled contract".to_string()))?;
+
+    let result = caller.call(arg as i64).expect("error");
+    let key = DefaultKey::from(KeyData::from_ffi(result as u64));
+    let value = arena.get(key);
+
+    value.map_or_else(
+        || {
+            Err(VmError::RuntimeErr(
+                "Runtime Error, result not available".to_string(),
+            ))
+        },
+        |ok| match ok {
+            Value::Pair { fst, snd } => {
+                let value = env.get(*snd)?;
+                let ops = env.get(*fst)?;
+                Ok(Outgoing::OutgoingManaged {
+                    payload: Box::from(OutgoingManaged {
+                        new_storage: value,
+                        operations: ops,
+                        contract_tickets: vec![],
+                        remaining_gas: env.get_gas_left() as usize,
+                    }),
+                })
+            }
+            _ => Err(VmError::RuntimeErr(
+                "Type mismatch in final result, result not available".to_string(),
+            )),
+        },
+    )
+}

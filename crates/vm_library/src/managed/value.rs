@@ -114,17 +114,38 @@ pub enum Value {
     String(String),
     Int(rug::Integer),
     Union(Union),
-    Pair { fst: DefaultKey, snd: DefaultKey },
+    Pair {
+        fst: DefaultKey,
+        snd: DefaultKey,
+    },
     Bool(bool),
     Map(OrdMap<Value, Value>),
     Set(OrdSet<Value>),
     List(Vector<Value>),
     Unit,
     Option(Option<DefaultKey>),
+    Closure {
+        opt_arg: Option<DefaultKey>,
+        call: i32,
+    },
 }
 impl Clone for Value {
     fn clone(&self) -> Self {
         match self {
+            Self::Closure { opt_arg, call } => {
+                let opt_arg = match opt_arg {
+                    None => None,
+                    Some(x) => {
+                        let arena = unsafe { &mut ARENA };
+                        let value = arena.get(*x);
+                        value.cloned().map(|x| arena.insert(x))
+                    }
+                };
+                Self::Closure {
+                    opt_arg,
+                    call: *call,
+                }
+            }
             Self::Bytes(arg0) => Self::Bytes(arg0.clone()),
             Self::String(arg0) => Self::String(arg0.clone()),
             Self::Int(arg0) => Self::Int(arg0.clone()),
@@ -354,6 +375,10 @@ impl Serialize for Value {
         use Value::*;
         let arena = unsafe { &mut ARENA };
         match self {
+            Closure {
+                opt_arg: _,
+                call: _,
+            } => Err(serde::ser::Error::custom("Cant serialize a closure")),
             Int(x) => {
                 let mut seq = serializer.serialize_tuple(2)?;
                 seq.serialize_element("Int")?;
