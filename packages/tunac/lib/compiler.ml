@@ -140,17 +140,20 @@ let rec compile_instruction ~ctx instruction =
     "(call $push (call $update (call $pop) (call $pop) (call $pop)))"
   | Prim (_, I_XOR, _, _) -> "(call $push (call $xor (call $pop) (call $pop)))"
   | Prim (_, I_ISNAT, _, _) -> "(call $push (call $isnat (call $pop)))"
-  | Prim (_, I_DIG, [ Int (_, n) ], _) ->
+  | Prim (_, I_DIG, [ Int (_, n) ], _) -> (
     let n = Z.to_int32 n in
-    Printf.sprintf "(call $dig (i32.const %ld))" n
+    match n with
+    | 0l -> ""
+    | 1l -> Printf.sprintf "(call $swap)"
+    | n -> Printf.sprintf "(call $dig (i32.const %ld))" n)
   | Prim (_, I_DUG, [ Int (_, n) ], _) ->
     let n = Z.to_int32 n in
     Printf.sprintf "(call $dug (i32.const %ld))" n
   | Prim (_, I_DUP, [ Int (_, n) ], _) ->
     let n = Z.to_int32 n in
-    Printf.sprintf "(call $dup (i32.const %ld))" n
-  | Prim (loc, I_DUP, [], annot) ->
-    compile_instruction ~ctx (Prim (loc, I_DUP, [ Int (loc, Z.one) ], annot))
+    Printf.sprintf "(call $dup (i32.const %ld))" (Int32.sub n 1l)
+  | Prim (_loc, I_DUP, [], _annot) ->
+    Printf.sprintf "(call $dup (i32.const %ld))" 0l
   | Prim (_, I_DROP, [ Int (_, n) ], _) ->
     let n = Z.to_int32 n in
     Printf.sprintf "(call $drop (i32.const %ld))" n
@@ -266,7 +269,7 @@ let rec compile_instruction ~ctx instruction =
   | Prim (_, prim, _, _) ->
     failwith
       ("Unsupported primitive " ^ Michelson_primitives.string_of_prim prim)
-  | Seq _ | Int _ | String _ | Bytes _ -> assert false
+  | Seq _ | Int _ | String _ | Bytes _ -> failwith "cant happen"
 
 and compile_lambda ~ctx ~unit name body =
   let body =
@@ -274,7 +277,8 @@ and compile_lambda ~ctx ~unit name body =
   in
   let lambda =
     Printf.sprintf
-      "(func %s (param $arg i64) %s (local $1 i64) (call $push (local.get $arg)) %s %s)"
+      "(func %s (param $arg i64) %s (local $1 i64) (call $push (local.get \
+       $arg)) %s %s)"
       name
       (if unit then "(result)" else "(result i64)")
       body

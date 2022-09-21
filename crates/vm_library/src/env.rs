@@ -41,7 +41,7 @@ impl Context {
     where
         C: FnOnce(&Instance) -> VMResult<R>,
     {
-        match self.inner.as_ref().borrow_mut().instance {
+        match self.inner.as_ref().borrow().instance {
             Some(instance_ptr) => {
                 let instance_ref = unsafe { instance_ptr.as_ref() };
                 callback(instance_ref)
@@ -51,17 +51,17 @@ impl Context {
             )),
         }
     }
-    pub fn set_instance(&mut self, wasmer_instance: Option<NonNull<Instance>>) {
+    pub fn set_instance(&self, wasmer_instance: Option<NonNull<Instance>>) {
         self.inner.as_ref().borrow_mut().instance = wasmer_instance;
     }
-    pub fn set_pusher(&mut self, pusher: Option<NonNull<wasmer::NativeFunc<i64, ()>>>) {
+    pub fn set_pusher(&self, pusher: Option<NonNull<wasmer::NativeFunc<i64, ()>>>) {
         self.inner.as_ref().borrow_mut().pusher = pusher;
     }
 
-    pub fn set_call_unit(&mut self, f: Option<NonNull<wasmer::NativeFunc<(i64, i32), ()>>>) {
+    pub fn set_call_unit(&self, f: Option<NonNull<wasmer::NativeFunc<(i64, i32), ()>>>) {
         self.inner.as_ref().borrow_mut().call_unit = f;
     }
-    pub fn set_call(&mut self, f: Option<NonNull<wasmer::NativeFunc<(i64, i32), i64>>>) {
+    pub fn set_call(&self, f: Option<NonNull<wasmer::NativeFunc<(i64, i32), i64>>>) {
         self.inner.as_ref().borrow_mut().call = f;
     }
     pub fn get_gas_left(&self) -> u64 {
@@ -94,7 +94,7 @@ impl Context {
         }
     }
     pub fn push_value(&self, value: i64) -> VMResult<()> {
-        match self.inner.as_ref().borrow_mut().pusher {
+        match self.inner.as_ref().borrow().pusher {
             Some(instance_ptr) => {
                 let func = unsafe { instance_ptr.as_ref() };
                 func.call(value)
@@ -106,7 +106,7 @@ impl Context {
         }
     }
     pub fn call(&self, value: i64, idx: i32) -> VMResult<i64> {
-        match self.inner.as_ref().borrow_mut().call {
+        match self.inner.as_ref().borrow().call {
             Some(instance_ptr) => {
                 let func = unsafe { instance_ptr.as_ref() };
                 func.call(value, idx)
@@ -118,7 +118,7 @@ impl Context {
         }
     }
     pub fn call_unit(&self, value: i64, idx: i32) -> VMResult<()> {
-        match self.inner.as_ref().borrow_mut().call_unit {
+        match self.inner.as_ref().borrow().call_unit {
             Some(instance_ptr) => {
                 let func = unsafe { instance_ptr.as_ref() };
                 func.call(value, idx)

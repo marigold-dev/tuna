@@ -66,7 +66,7 @@ pub fn neq(env: &Context, value: Value) -> VMResult<i64> {
 
         _ => Err(FFIError::ExternError {
             value: (value).clone(),
-            msg: "type mismatch, expected Pair".to_string(),
+            msg: "type mismatch, expected Int".to_string(),
         }
         .into()),
     }
@@ -85,7 +85,7 @@ pub fn eq(env: &Context, value: Value) -> VMResult<i64> {
 
         _ => Err(FFIError::ExternError {
             value: (value).clone(),
-            msg: "type mismatch, expected Pair".to_string(),
+            msg: "type mismatch, expected Int".to_string(),
         }
         .into()),
     }
@@ -102,7 +102,7 @@ pub fn not(env: &Context, value: Value) -> VMResult<i64> {
 
         _ => Err(FFIError::ExternError {
             value,
-            msg: "type mismatch, expected Pair".to_string(),
+            msg: "type mismatch, expected Bool".to_string(),
         }
         .into()),
     }
@@ -131,7 +131,7 @@ pub fn unpair(env: &Context, value: Value) -> VMResult<()> {
             Ok(())
         }
         _ => Err(FFIError::ExternError {
-            value,
+            value: (value),
             msg: "type mismatch, expected Pair".to_string(),
         }
         .into()),
@@ -142,7 +142,7 @@ pub fn car(env: &Context, value: Value) -> VMResult<i64> {
     match value {
         Value::Pair { fst, snd: _ } => conversions::to_i64(fst.data().as_ffi()),
         _ => Err(FFIError::ExternError {
-            value,
+            value: (value),
             msg: "type mismatch, expected Pair".to_string(),
         }
         .into()),
@@ -444,15 +444,15 @@ pub fn mem(env: &Context, value1: Value, value2: Value) -> VMResult<i64> {
 }
 pub fn map_get(env: &Context, value1: Value, value2: Value) -> VMResult<i64> {
     env.update_gas(300)?;
-    match value1 {
+    match value2 {
         Value::Map(x) => {
-            let res = x.get(&value2);
+            let res = x.get(&value1);
             let bumped = res.map(|res| env.bump_raw(res.clone()));
             let bumped = env.bump(Value::Option(bumped));
             conversions::to_i64(bumped)
         }
         _ => Err(FFIError::ExternError {
-            value: value1,
+            value: value2,
             msg: "type mismatch, expected Map with a Key".to_string(),
         }
         .into()),
@@ -925,17 +925,14 @@ fn none(c: &Context) -> VMResult<i64> {
 fn map(env: &Context, v: Value, idx: i32) -> VMResult<i64> {
     match v {
         Value::List(x) => {
-            let cloned = x;
-            let new: VMResult<Vector<Value>> = cloned
+            let new: VMResult<Vector<Value>> = x
                 .iter()
-                .rev()
                 .map(|x| {
                     let reff = x.clone();
                     let bumped = env.bump(reff);
                     let res = env.call(bumped as i64, idx)?;
                     env.get(DefaultKey::from(KeyData::from_ffi(res as u64)))
                 })
-                .rev()
                 .collect();
             let val = new?;
             let bumped = env.bump(Value::List(val));
@@ -972,8 +969,8 @@ fn exec(env: &Context, v: Value, lam: Value) -> VMResult<i64> {
 }
 
 fn apply(env: &Context, v: Value, lam: Value) -> VMResult<i64> {
+    let bumped = env.bump_raw(v);
     if let Value::Closure { opt_arg, call } = lam {
-        let bumped = env.bump_raw(v);
         opt_arg.map_or_else(
             || {
                 let p = Value::Closure {
@@ -1006,7 +1003,7 @@ fn apply(env: &Context, v: Value, lam: Value) -> VMResult<i64> {
 }
 fn iter(env: &Context, v: Value, idx: i32) -> VMResult<()> {
     match v {
-        Value::List(x) => x.iter().rev().try_for_each(|x| {
+        Value::List(x) => x.iter().try_for_each(|x| {
             let reff = x.clone();
             let bumped = env.bump(reff);
             env.call_unit(bumped as i64, idx)
@@ -1023,7 +1020,6 @@ fn dup_host(c: &Context, v: i64) -> VMResult<()> {
     let v = DefaultKey::from(KeyData::from_ffi(v as u64));
     let v = c.get_ref(v)?;
     let cloned = v.clone();
-
     let bumped = c.bump(cloned);
     let conved = conversions::to_i64(bumped)?;
     c.push_value(conved)

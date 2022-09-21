@@ -15,6 +15,8 @@ pub fn populate_predef(sender: String, self_: String, source: String) {
     let map = unsafe { &mut PREDEF };
     map.clear();
     map.insert("none".to_string(), Value::Option(None));
+    map.insert("unit".to_string(), Value::Unit);
+
     map.insert("nil".to_string(), Value::List(vector![]));
     map.insert("source".to_string(), Value::String(source));
     map.insert("sender".to_string(), Value::String(sender));
