@@ -2,3 +2,7 @@
  (deps
   ../bin/tunacc_test.exe
   (glob_files ./**.tz)))
+
+(test
+ (name compile_value)
+ (libraries tunac alcotest))

@@ -16,6 +16,8 @@ module rec V : sig
     | Map of t Map.t
     | Set of Set.t
   [@@deriving ord, eq, yojson]
+
+  val pp : Format.formatter -> t -> unit
 end
 
 and Map : (Helpers.Map.S_with_yojson with type key = V.t)
