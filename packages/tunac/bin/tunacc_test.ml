@@ -4,10 +4,22 @@ let read_file name =
   let size = input f buf 0 100000 in
   Bytes.to_string @@ Bytes.sub buf 0 size
 
-let () =
+let compile_contract filename =
   let wat, constants =
-    Sys.argv.(1) |> read_file |> Tunac.Compiler.compile |> Result.get_ok
+    filename |> read_file |> Tunac.Compiler.compile |> Result.get_ok
   in
   let out = Tunac.Output.make wat constants |> Result.get_ok in
 
   print_endline @@ Yojson.Safe.pretty_to_string @@ Tunac.Output.yojson_of_t out
+
+let compile_value code =
+  let value = code |> Tunac.Compiler.compile_value |> Result.get_ok in
+  let out = value |> Tunac.Values.yojson_of_t |> Yojson.Safe.pretty_to_string in
+  print_endline out
+
+
+let () =
+  match Sys.argv.(1) with
+  | "contract" -> compile_contract Sys.argv.(2)
+  | "value" -> compile_value Sys.argv.(2)
+  | _ -> failwith "Invalid command"
