@@ -85,20 +85,14 @@ let base t =
   (global $__stack_base i32 (i32.const 32768))
   (type $callback_t (func (param i64) (result i64)))
 
-  (func $call_callback 
-                                               (param $arg1 i64) (param $idx i32)
-                                               (result i64)
-    (call_indirect (type $callback_t) 
-                   (local.get $arg1)
-                   (local.get $idx)))
-  (type $callback_t_unit (func (param i64) (result)))
+  (func $call_callback (param $arg1 i64) (param $idx i32) (result i64)
+    (call_indirect (type $callback_t) (local.get $arg1) (local.get $idx)))
+    (type $callback_t_unit (func (param i64) (result)))
+    (func $call_callback_unit (param $arg1 i64) (param $idx i32) (result )
+      (call_indirect (type $callback_t_unit)
+        (local.get $arg1)
+        (local.get $idx)))
 
-  (func $call_callback_unit (param $arg1 i64) (param $idx i32)
-                          
-                          (result )
-                     (call_indirect (type $callback_t_unit) 
-                                    (local.get $arg1)
-                                    (local.get $idx)))
   (func $dip (param $n i32) (result)
     (local $stop i32)
     (local $sp' i32)
@@ -159,14 +153,16 @@ let base t =
     (local $sp' i32)
     (local $top i64)
     (local.set $sp' (i32.add (global.get $sp) (local.get $n)))
-    (i32.mul (i32.const 8) (local.tee $idx (global.get $sp)))
+    (local.tee $idx (global.get $sp))
     (local.tee $loop_idx)
+    (i32.mul (i32.const 8))
     i64.load
     local.set $top
     (loop $loop
       (i32.mul (i32.const 8) (local.get $idx))
-      (i32.mul (i32.const 8) (i32.add (local.get $loop_idx) (i32.const 1)))
+      (i32.add (local.get $loop_idx) (i32.const 1))
       local.tee $loop_idx
+      (i32.mul (i32.const 8))
       i64.load
       i64.store
       (local.set $idx (i32.add (local.get $idx) (i32.const 1)))
@@ -178,29 +174,26 @@ let base t =
     (i64.store (i32.mul (i32.const 8) (local.get $sp')) (local.get $top)))
 
   (func $dig (param $n i32) (result)
-    (local $idx i32)
-    (local $loop_idx i32)
-    (local $sp' i32)
-    (local $digged i64)
-    (local.set $sp' (global.get $sp))
-    (i32.mul (i32.const 8) (local.tee $idx (i32.add (local.get $sp') (local.get $n))))
-    (local.tee $loop_idx)
-    (i64.load)
-    local.set $digged
+    (local $idx i32) (local $t i32) (local $digged i64)
+
+    (local.set $digged
+      (i64.load
+        (i32.mul (i32.const 8)
+          (local.tee $idx (i32.add (global.get $sp) (local.get $n))))))
+
     (loop $loop
-      (i32.mul (i32.const 8) (local.get $idx))
-      (i32.sub (local.get $loop_idx) (i32.const 1))
-      local.tee $loop_idx
-      i32.const 8
-      i32.mul
-      i64.load
-      i64.store
-      (local.set $idx (i32.sub (local.get $idx) (i32.const 1)))
-      (local.get $sp')
-      (local.get $loop_idx)
-      i32.lt_u
-      br_if $loop)
-    (i64.store (i32.mul (i32.const 8) (global.get $sp)) (local.get $digged)))
+      (local.set $t (i32.mul (i32.const 8) (local.get $idx)))
+
+      (i64.store (local.get $t)
+        (i64.load
+          (i32.mul
+            (i32.const 8)
+            (local.tee $idx (i32.sub (local.get $idx) (i32.const 1))))))
+
+      (br_if $loop
+        (i32.lt_u (global.get $sp) (local.get $idx))))
+
+    (i64.store (i32.mul (i32.const 8) (local.get $idx)) (local.get $digged)))
 
   (func $pop (result i64)
     (local $spp i32)
