@@ -12,6 +12,7 @@ let make module_ constants =
     match m.it with
     | Textual m ->
       Wasm.Valid.check_module m;
+      Array.sort (fun (x, _) (x2, _) -> Int.compare x x2) constants;
       Ok { module_; constants }
     | Encoded _ | Quoted _ -> Error `Invalid_module
   with Wasm.Parse.Syntax (at, msg) | Wasm.Valid.Invalid (at, msg) ->

@@ -5,7 +5,7 @@ use crate::{
 };
 use slotmap::{DefaultKey, Key};
 use std::{cell::RefCell, ptr::NonNull, rc::Rc};
-use wasmer::{HostEnvInitError, Instance, Table, WasmerEnv};
+use wasmer::{HostEnvInitError, Instance, WasmerEnv};
 use wasmer_middlewares::metering::{get_remaining_points, set_remaining_points, MeteringPoints};
 
 pub struct Context {
@@ -16,8 +16,8 @@ pub struct Inner {
     pub instance: Option<NonNull<Instance>>,
     pub pusher: Option<NonNull<wasmer::NativeFunc<i64, ()>>>,
     pub gas_limit: u64,
-    pub call_unit: Option<NonNull<wasmer::NativeFunc<i64, ()>>>,
-    pub call: Option<NonNull<wasmer::NativeFunc<i64, i64>>>,
+    pub call_unit: Option<NonNull<wasmer::NativeFunc<(i64, i32), ()>>>,
+    pub call: Option<NonNull<wasmer::NativeFunc<(i64, i32), i64>>>,
 }
 
 impl Clone for Context {
@@ -58,10 +58,10 @@ impl Context {
         self.inner.as_ref().borrow_mut().pusher = pusher;
     }
 
-    pub fn set_call_unit(&mut self, f: Option<NonNull<wasmer::NativeFunc<i64, ()>>>) {
+    pub fn set_call_unit(&mut self, f: Option<NonNull<wasmer::NativeFunc<(i64, i32), ()>>>) {
         self.inner.as_ref().borrow_mut().call_unit = f;
     }
-    pub fn set_call(&mut self, f: Option<NonNull<wasmer::NativeFunc<i64, i64>>>) {
+    pub fn set_call(&mut self, f: Option<NonNull<wasmer::NativeFunc<(i64, i32), i64>>>) {
         self.inner.as_ref().borrow_mut().call = f;
     }
     pub fn get_gas_left(&self) -> u64 {
@@ -98,6 +98,30 @@ impl Context {
             Some(instance_ptr) => {
                 let func = unsafe { instance_ptr.as_ref() };
                 func.call(value)
+                    .map_err(|x| VmError::RuntimeErr(x.to_string()))
+            }
+            None => Err(VmError::InstantiationErr(
+                "pusher missing, lifecycle error".to_string(),
+            )),
+        }
+    }
+    pub fn call(&self, value: i64, idx: i32) -> VMResult<i64> {
+        match self.inner.as_ref().borrow_mut().call {
+            Some(instance_ptr) => {
+                let func = unsafe { instance_ptr.as_ref() };
+                func.call(value, idx)
+                    .map_err(|x| VmError::RuntimeErr(x.to_string()))
+            }
+            None => Err(VmError::InstantiationErr(
+                "pusher missing, lifecycle error".to_string(),
+            )),
+        }
+    }
+    pub fn call_unit(&self, value: i64, idx: i32) -> VMResult<()> {
+        match self.inner.as_ref().borrow_mut().call_unit {
+            Some(instance_ptr) => {
+                let func = unsafe { instance_ptr.as_ref() };
+                func.call(value, idx)
                     .map_err(|x| VmError::RuntimeErr(x.to_string()))
             }
             None => Err(VmError::InstantiationErr(

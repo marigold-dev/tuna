@@ -2,6 +2,8 @@ let import_list =
   let ref_unit = "(param i64 ) (result)" in
   let ref_ref__ref = "(param i64 i64) (result i64)" in
   let ref_i32__ref = "(param i64 i32) (result i64)" in
+  let ref_i32__unit = "(param i64 i32) (result )" in
+
   let ref_ref_ref__ref = "(param i64 i64 i64) (result i64)" in
   let ref_ref_ref__ = "(param i64 i64 i64)" in
   let ref__ref = "(param i64) (result i64)" in
@@ -24,13 +26,15 @@ let import_list =
   ; func ref__ref "some"
   ; func const "nil"
   ; func const "none"
+  ; func const "unit"
   ; func const "zero"
+  ; func const "empty_map"
   ; func const "empty_set"
   ; func const "sender"
   ; func ref_ref__ref "map_get"
   ; func ref_ref__ref "mem"
   ; func ref_ref_ref__ref "update"
-  ; func ref_i32__ref "iter"
+  ; func ref_i32__unit "iter"
   ; func ref_i32__ref "map"
   ; func ref__i32 "if_left"
   ; func ref__i32 "if_none"
@@ -46,7 +50,6 @@ let import_list =
   ; func ref_ref__ref "exec"
   ; func ref_ref__ref "apply"
   ; func i32__ref "const"
-  ; func ref__ref "get_some"
   ; func ref__ref "abs"
   ; func ref__ref "eq"
   ; func ref__ref "gt"
@@ -75,23 +78,23 @@ let base t =
 
   (global $mode i32 (i32.const 0))
 
-  (memory 1)
+  (memory 4)
   (global $sp (mut i32) (i32.const 4000)) ;; stack pointer
   (global $sh_sp (mut i32) (i32.const 1000)) ;;shadow_stack stack pointer
 
   (global $__stack_base i32 (i32.const 32768))
   (type $callback_t (func (param i64) (result i64)))
 
-  (func $call_callback (param $idx i32)
-                                               (param $arg1 i64)
+  (func $call_callback 
+                                               (param $arg1 i64) (param $idx i32)
                                                (result i64)
     (call_indirect (type $callback_t) 
                    (local.get $arg1)
                    (local.get $idx)))
   (type $callback_t_unit (func (param i64) (result)))
 
-  (func $call_callback_unit (param $idx i32)
-                          (param $arg1 i64)
+  (func $call_callback_unit (param $arg1 i64) (param $idx i32)
+                          
                           (result )
                      (call_indirect (type $callback_t_unit) 
                                     (local.get $arg1)

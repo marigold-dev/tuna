@@ -15,6 +15,8 @@ pub enum VmError {
     },
     #[error("Error compiling Wasm: {0}")]
     CompileErr(String),
+    #[error("Error deserializing module: {0}")]
+    DeserializeErr(String),
     #[error("Ran out of gas during contract execution")]
     OutOfGas,
     #[error("Generic error: {0}")]
@@ -53,7 +55,12 @@ impl From<wasmer::RuntimeError> for VmError {
 
 impl From<wasmer::CompileError> for VmError {
     fn from(original: wasmer::CompileError) -> Self {
-        VmError::RuntimeErr(format!("Could not compile: {}", original))
+        VmError::CompileErr(format!("Could not compile: {}", original))
+    }
+}
+impl From<wasmer::DeserializeError> for VmError {
+    fn from(original: wasmer::DeserializeError) -> Self {
+        VmError::DeserializeErr(format!("Could not deserialzie: {}", original))
     }
 }
 
