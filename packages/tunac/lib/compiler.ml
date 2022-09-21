@@ -202,12 +202,12 @@ let rec compile_instruction ~ctx instruction =
       loop_name body
   | Prim (_, I_ITER, [ Seq (_, body) ], _) ->
     let name = gen_symbol ~ctx "$iter_lambda" in
-    let lambda = compile_lambda ~ctx name body in
+    let lambda = compile_lambda ~ctx ~unit:true name body in
     Printf.sprintf "(call $iter (call $pop) (i32.const %d) (; %s ;) )" lambda
       name
   | Prim (_, I_MAP, [ Seq (_, body) ], _) ->
     let name = gen_symbol ~ctx "$map_lambda" in
-    let lambda = compile_lambda ~ctx name body in
+    let lambda = compile_lambda ~ctx ~unit:false name body in
     Printf.sprintf
       "(call $push (call $map (call $pop) (i32.const %d) (; %s ;) ))" lambda
       name
@@ -221,7 +221,7 @@ let rec compile_instruction ~ctx instruction =
     compile_constant ~ctx (Values.Bytes b)
   | Prim (_, I_LAMBDA, [ _; _; Seq (_, body) ], _) ->
     let name = gen_symbol ~ctx "$lambda" in
-    let lambda = compile_lambda ~ctx name body in
+    let lambda = compile_lambda ~ctx ~unit:false name body in
     Printf.sprintf "(call $push (call $closure (i32.const %d) (; %s ;) ))"
       lambda name
   | Prim (_, I_BLAKE2B, _, _) -> "(call $push (call $blake2b (call $pop)))"
@@ -268,11 +268,18 @@ let rec compile_instruction ~ctx instruction =
       ("Unsupported primitive " ^ Michelson_primitives.string_of_prim prim)
   | Seq _ | Int _ | String _ | Bytes _ -> assert false
 
-and compile_lambda ~ctx name body =
+and compile_lambda ~ctx ~unit name body =
   let body =
     body |> List.map (compile_instruction ~ctx) |> String.concat "\n"
   in
-  let lambda = Printf.sprintf "(func %s (local $1 i64) %s)" name body in
+  let lambda =
+    Printf.sprintf
+      "(func %s (param $arg i64) %s (local $1 i64) (call $push (local.get $arg)) %s %s)"
+      name
+      (if unit then "(result)" else "(result i64)")
+      body
+      (if unit then "" else "(call $pop)")
+  in
   let id = ctx.lambda_count in
   ctx.lambda_count <- id + 1;
   ctx.lambdas <- (id, name, lambda) :: ctx.lambdas;
@@ -308,7 +315,7 @@ let compile code =
     in
     let lambda_table =
       ctx.lambdas
-      |> List.map (fun (_, name, _) -> name)
+      |> List.rev_map (fun (_, name, _) -> name)
       |> String.concat " "
       |> Printf.sprintf "(table $closures funcref (elem %s))\n"
     in
