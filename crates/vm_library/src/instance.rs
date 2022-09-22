@@ -16,9 +16,8 @@ use crate::{
 pub fn invoke_managed(t: InvokeManaged) -> VMResult<Outgoing> {
     let arena = unsafe { &mut ARENA };
 
-    let module: VMResult<Module> = unsafe {
-        Module::deserialize(&compile_store::new_headless(), &t.mod_).map_err(|x| x.into())
-    };
+    let module: VMResult<Module> =
+        unsafe { Module::deserialize(&compile_store::new_headless(), &t.mod_).map_err(Into::into) };
     let env = Context {
         inner: Rc::new(RefCell::new(Inner {
             instance: None,
@@ -35,7 +34,7 @@ pub fn invoke_managed(t: InvokeManaged) -> VMResult<Outgoing> {
 
     let instance = Box::from(
         Instance::new(&module, &imports::make_imports(&env, store))
-            .map_err(|_| VmError::RuntimeErr("Failed to create instance".to_string()))?,
+            .map_err(|_| VmError::RuntimeErr("Failed to create instance".to_owned()))?,
     );
 
     {
@@ -44,19 +43,19 @@ pub fn invoke_managed(t: InvokeManaged) -> VMResult<Outgoing> {
             instance
                 .exports
                 .get_native_function::<i64, ()>("push")
-                .map_err(|_| VmError::RuntimeErr("Miscompiled contract".to_string()))?,
+                .map_err(|_| VmError::RuntimeErr("Miscompiled contract".to_owned()))?,
         );
         let call_unit = Box::from(
             instance
                 .exports
                 .get_native_function::<(i64, i32), ()>("call_callback_unit")
-                .map_err(|_| VmError::RuntimeErr("Miscompiled contract".to_string()))?,
+                .map_err(|_| VmError::RuntimeErr("Miscompiled contract".to_owned()))?,
         );
         let call = Box::from(
             instance
                 .exports
                 .get_native_function::<(i64, i32), i64>("call_callback")
-                .map_err(|_| VmError::RuntimeErr("Miscompiled contract".to_string()))?,
+                .map_err(|_| VmError::RuntimeErr("Miscompiled contract".to_owned()))?,
         );
 
         env.set_instance(Some(new));
@@ -75,9 +74,9 @@ pub fn invoke_managed(t: InvokeManaged) -> VMResult<Outgoing> {
     let caller = instance
         .exports
         .get_native_function::<i64, i64>("main")
-        .map_err(|_| VmError::RuntimeErr("Miscompiled contract".to_string()))?;
+        .map_err(|_| VmError::RuntimeErr("Miscompiled contract".to_owned()))?;
 
-    let result: VMResult<i64> = caller.call(arg as i64).map_err(|x| x.into());
+    let result: VMResult<i64> = caller.call(arg as i64).map_err(Into::into);
     let result = result?;
     let key = DefaultKey::from(KeyData::from_ffi(result as u64));
     let value = arena.get(key);
@@ -85,7 +84,7 @@ pub fn invoke_managed(t: InvokeManaged) -> VMResult<Outgoing> {
     value.map_or_else(
         || {
             Err(VmError::RuntimeErr(
-                "Runtime Error, result not available".to_string(),
+                "Runtime Error, result not available".to_owned(),
             ))
         },
         |ok| match ok {
@@ -102,7 +101,7 @@ pub fn invoke_managed(t: InvokeManaged) -> VMResult<Outgoing> {
                 })
             }
             _ => Err(VmError::RuntimeErr(
-                "Type mismatch in final result, result not available".to_string(),
+                "Type mismatch in final result, result not available".to_owned(),
             )),
         },
     )

@@ -47,7 +47,7 @@ impl Context {
                 callback(instance_ref)
             }
             None => Err(VmError::InstantiationErr(
-                "instance missing, lifecycle error".to_string(),
+                "instance missing, lifecycle error".to_owned(),
             )),
         }
     }
@@ -101,7 +101,7 @@ impl Context {
                     .map_err(|x| VmError::RuntimeErr(x.to_string()))
             }
             None => Err(VmError::InstantiationErr(
-                "pusher missing, lifecycle error".to_string(),
+                "pusher missing, lifecycle error".to_owned(),
             )),
         }
     }
@@ -113,7 +113,7 @@ impl Context {
                     .map_err(|x| VmError::RuntimeErr(x.to_string()))
             }
             None => Err(VmError::InstantiationErr(
-                "pusher missing, lifecycle error".to_string(),
+                "pusher missing, lifecycle error".to_owned(),
             )),
         }
     }
@@ -125,7 +125,7 @@ impl Context {
                     .map_err(|x| VmError::RuntimeErr(x.to_string()))
             }
             None => Err(VmError::InstantiationErr(
-                "pusher missing, lifecycle error".to_string(),
+                "pusher missing, lifecycle error".to_owned(),
             )),
         }
     }
