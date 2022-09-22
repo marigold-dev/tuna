@@ -121,7 +121,7 @@ let rec compile_instruction ~ctx instruction =
   | Prim (_, I_LEFT, _, _) -> "(call $push (call $left (call $pop)))"
   | Prim (_, I_LT, _, _) -> "(call $push (call $lt (call $pop)))"
   | Prim (_, I_MEM, _, _) -> "(call $push (call $mem (call $pop) (call $pop)))"
-  | Prim (_, I_MUL, _, _) -> "(call $push (call $mul (call $pop) (call $pop)))"
+  | Prim (_, I_MUL, _, _) -> "(call $push (call $z_mul (call $pop) (call $pop)))"
   | Prim (_, I_NEG, _, _) -> "(call $push (call $neg (call $pop)))"
   | Prim (_, I_NEQ, _, _) -> "(call $push (call $neq (call $pop)))"
   | Prim (_, I_NIL, _, _) -> "(call $push (call $nil))"
