@@ -11,6 +11,7 @@ use crate::{
     incoming::InvokeManaged,
     managed::{imports, value::Value},
     outgoing::{Outgoing, OutgoingManaged},
+    ticket_table::TicketTable,
 };
 
 pub fn invoke_managed(t: InvokeManaged) -> VMResult<Outgoing> {
@@ -25,6 +26,7 @@ pub fn invoke_managed(t: InvokeManaged) -> VMResult<Outgoing> {
             gas_limit: 10000,
             call_unit: None,
             call: None,
+            ticket_table: TicketTable::default(),
         })),
     };
     populate_predef(t.sender, t.self_addr, t.source);

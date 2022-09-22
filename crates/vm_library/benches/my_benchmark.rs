@@ -12,6 +12,7 @@ use vm_library::{
         imports,
         value::{Union, Value},
     },
+    ticket_table::{Ticket, TicketTable},
 };
 use wasmer::{imports, wat2wasm, Instance, Module};
 #[global_allocator]
@@ -38,6 +39,7 @@ fn benchmark2(num: i64, json: &str) -> (Module, String, i64) {
             gas_limit: 10000,
             call_unit: None,
             call: None,
+            ticket_table: TicketTable::default(),
         })),
     };
     let store = module.store();

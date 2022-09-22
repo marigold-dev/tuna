@@ -1,6 +1,8 @@
 use std::fmt::Debug;
 use thiserror::Error;
 
+use crate::ticket_table;
+
 use super::ffi::FFIError;
 
 #[derive(Error, Debug)]
@@ -74,5 +76,11 @@ impl From<VmError> for wasmer::RuntimeError {
     fn from(original: VmError) -> wasmer::RuntimeError {
         let msg: String = original.to_string();
         wasmer::RuntimeError::new(msg)
+    }
+}
+impl From<ticket_table::Error> for VmError {
+    fn from(original: ticket_table::Error) -> VmError {
+        let msg: String = original.to_string();
+        VmError::RuntimeErr(msg)
     }
 }

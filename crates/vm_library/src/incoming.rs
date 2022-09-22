@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::{managed::value::Value, ticket::Ticket};
+use crate::{managed::value::Value, ticket_table::Ticket};
 #[derive(Debug, Deserialize, Serialize)]
 pub struct InvokeManaged {
     pub mod_: Vec<u8>,

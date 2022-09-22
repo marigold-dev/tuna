@@ -1,4 +1,7 @@
-use crate::arena::ARENA;
+use crate::{
+    arena::{ARENA, INVERSETICKETS, TICKETS},
+    ticket_table::Ticket,
+};
 use im_rc::{OrdMap, OrdSet, Vector};
 use serde::{de::Visitor, ser::SerializeTuple, Deserialize, Serialize};
 use slotmap::DefaultKey;
@@ -124,6 +127,7 @@ pub enum Value {
     List(Vector<Value>),
     Unit,
     Option(Option<DefaultKey>),
+    Ticket(usize),
     Closure {
         opt_arg: Option<DefaultKey>,
         call: i32,
@@ -179,6 +183,7 @@ impl Clone for Value {
                     Self::Option(value)
                 }
             },
+            Self::Ticket(x) => Self::Ticket(*x),
         }
     }
 }
@@ -282,6 +287,23 @@ impl<'de> Visitor<'de> for ValueVisitor {
                             ))
                         },
                         |x| Ok(Value::List(x)),
+                    )
+                }
+                "Ticket" => {
+                    let elem = seq.next_element::<Ticket>()?;
+                    elem.map_or_else(
+                        || {
+                            Err(serde::de::Error::invalid_type(
+                                serde::de::Unexpected::Str("unexpected structure in list"),
+                                &"Value enum",
+                            ))
+                        },
+                        |x| {
+                            let tickets = unsafe { &mut INVERSETICKETS };
+                            let ticket = { tickets.get(&x) }
+                                .map_or_else(|| Err(serde::de::Error::custom(&"Value enum")), Ok)?;
+                            Ok(Value::Ticket(*ticket))
+                        },
                     )
                 }
                 "Map" => {
@@ -405,6 +427,21 @@ impl Serialize for Value {
                 let mut seq = serializer.serialize_tuple(2)?;
                 seq.serialize_element("String")?;
                 seq.serialize_element(&b)?;
+                seq.end()
+            }
+            Ticket(b) => {
+                let table = unsafe { &mut TICKETS };
+                let ticket = { table.remove(b) }.map_or_else(
+                    || {
+                        Err(serde::ser::Error::custom(
+                            "cant serialize non existing ticket",
+                        ))
+                    },
+                    Ok,
+                )?;
+                let mut seq = serializer.serialize_tuple(2)?;
+                seq.serialize_element("Ticket")?;
+                seq.serialize_element(&ticket)?;
                 seq.end()
             }
             Union(union) => {

@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::{managed::value::Value, ticket::Ticket};
+use crate::{managed::value::Value, ticket_table::Ticket};
 
 #[derive(Deserialize, Serialize)]
 pub struct OutgoingManaged {
