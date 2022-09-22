@@ -1,17 +1,23 @@
+use fnv::FnvHashMap;
 use serde::{Deserialize, Serialize};
 
-use crate::{managed::value::Value, ticket_table::Ticket};
+use crate::contract_address::ContractAddress;
 
-#[derive(Deserialize, Serialize)]
-pub struct OutgoingManaged {
-    pub new_storage: Value,
-    pub operations: Value,
-    pub contract_tickets: Vec<Ticket>,
-    pub remaining_gas: usize,
+#[derive(Serialize)]
+pub struct Set<'a> {
+    pub key: &'a ContractAddress,
+    pub value: &'a str,
 }
 
-#[derive(Deserialize, Serialize)]
-pub enum Outgoing {
-    OutgoingManaged { payload: Box<OutgoingManaged> },
-    CheckContract { payload: String },
+#[derive(Debug, Deserialize, Serialize)]
+pub struct SetOwned {
+    pub key: ContractAddress,
+    pub value: String,
 }
+
+#[repr(transparent)]
+#[derive(Deserialize, Serialize, Debug)]
+pub struct Init(pub FnvHashMap<ContractAddress, String>);
+#[repr(transparent)]
+#[derive(Deserialize, Serialize, Debug)]
+pub struct InitVec(pub Vec<SetOwned>);

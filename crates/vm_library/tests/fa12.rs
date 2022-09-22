@@ -1,8 +1,8 @@
 use vm_library::{
     arena::ARENA,
+    execution_result::ExecutionResult,
     instance::invoke_managed,
     managed::value::{Union, Value},
-    outgoing::Outgoing,
 };
 
 mod common;
@@ -30,24 +30,24 @@ fn get_balance() {
     let bump = arena.insert(arg);
     let arg = Value::Union(Union::Left(bump));
     let init = common::create_incoming_managed(payload, arg, storage.clone());
-    if let Outgoing::OutgoingManaged { payload } = invoke_managed(init).unwrap() {
-        assert_eq!(
-            serde_json::to_string(&payload.new_storage).unwrap(),
-            serde_json::to_string(&storage).unwrap()
-        );
-        let fst = arena.insert(Value::Int(100.into()));
-        let snd = arena.insert(Value::String(
-            "KT1WiBZHtvv3EczaN628DkNob4cayHzTEDNK".to_string(),
-        ));
+    let ExecutionResult {
+        new_storage, ops, ..
+    } = invoke_managed(init).unwrap();
 
-        let pair = Value::Pair { fst, snd };
-        assert_eq!(
-            serde_json::to_string(&payload.operations).unwrap(),
-            serde_json::to_string(&Value::List(im_rc::vector![pair])).unwrap()
-        );
-    } else {
-        panic!()
-    }
+    assert_eq!(
+        serde_json::to_string(&new_storage).unwrap(),
+        serde_json::to_string(&storage).unwrap()
+    );
+    let fst = arena.insert(Value::Int(100.into()));
+    let snd = arena.insert(Value::String(
+        "KT1WiBZHtvv3EczaN628DkNob4cayHzTEDNK".to_string(),
+    ));
+
+    let pair = Value::Pair { fst, snd };
+    assert_eq!(
+        serde_json::to_string(&ops).unwrap(),
+        serde_json::to_string(&Value::List(im_rc::vector![pair])).unwrap()
+    );
 }
 
 #[test]
@@ -67,24 +67,28 @@ fn get_total_supply() {
     let bump = arena.insert(arg);
     let arg = Value::Union(Union::Left(bump));
     let init = common::create_incoming_managed(payload, arg, storage.clone());
-    if let Outgoing::OutgoingManaged { payload } = invoke_managed(init).unwrap() {
-        assert_eq!(
-            serde_json::to_string(&payload.new_storage).unwrap(),
-            serde_json::to_string(&storage).unwrap()
-        );
-        let fst = arena.insert(Value::Int(100.into()));
-        let snd = arena.insert(Value::String(
-            "KT1WiBZHtvv3EczaN628DkNob4cayHzTEDNK".to_string(),
-        ));
+    let ExecutionResult {
+        new_storage, ops, ..
+    } = invoke_managed(init).unwrap();
+    assert_eq!(
+        serde_json::to_string(&new_storage).unwrap(),
+        serde_json::to_string(&storage).unwrap()
+    );
 
-        let pair = Value::Pair { fst, snd };
-        assert_eq!(
-            serde_json::to_string(&payload.operations).unwrap(),
-            serde_json::to_string(&Value::List(im_rc::vector![pair])).unwrap()
-        );
-    } else {
-        panic!()
-    }
+    assert_eq!(
+        serde_json::to_string(&new_storage).unwrap(),
+        serde_json::to_string(&storage).unwrap()
+    );
+    let fst = arena.insert(Value::Int(100.into()));
+    let snd = arena.insert(Value::String(
+        "KT1WiBZHtvv3EczaN628DkNob4cayHzTEDNK".to_string(),
+    ));
+
+    let pair = Value::Pair { fst, snd };
+    assert_eq!(
+        serde_json::to_string(&ops).unwrap(),
+        serde_json::to_string(&Value::List(im_rc::vector![pair])).unwrap()
+    );
 }
 
 #[test]
@@ -104,15 +108,12 @@ fn approve() {
     let arg = Value::Union(Union::Left(bump));
     let bump = arena.insert(arg);
     let arg = Value::Union(Union::Left(bump));
-    let init = common::create_incoming_managed(payload, arg, storage.clone());
-    if let Outgoing::OutgoingManaged { payload } = invoke_managed(init).unwrap() {
-        assert_eq!(
-            serde_json::to_string(&payload.new_storage).unwrap(),
-            serde_json::to_string(&desired_storage).unwrap()
-        );
-    } else {
-        panic!()
-    }
+    let init = common::create_incoming_managed(payload, arg, storage);
+    let ExecutionResult { new_storage, .. } = invoke_managed(init).unwrap();
+    assert_eq!(
+        serde_json::to_string(&new_storage).unwrap(),
+        serde_json::to_string(&desired_storage).unwrap()
+    );
 }
 
 #[test]
@@ -153,15 +154,12 @@ fn transfer() {
     let arg = serde_json::from_str(r#"["Pair",["String","tz1gvF4cD2dDtqitL3ZTraggSR1Mju2BKFEM"],["Pair",["String","tz2AcXz8WUu51YYdE5Rsnosxd1hkhW9tG7pd"],["Int","5"]]]"#).unwrap();
     let bump = arena.insert(arg);
     let arg = Value::Union(Union::Right(bump));
-    let init = common::create_incoming_managed(payload, arg, storage.clone());
-    if let Outgoing::OutgoingManaged { payload } = invoke_managed(init).unwrap() {
-        assert_eq!(
-            serde_json::to_string(&payload.new_storage).unwrap(),
-            serde_json::to_string(&desired_storage).unwrap()
-        );
-    } else {
-        panic!()
-    }
+    let init = common::create_incoming_managed(payload, arg, storage);
+    let ExecutionResult { new_storage, .. } = invoke_managed(init).unwrap();
+    assert_eq!(
+        serde_json::to_string(&new_storage).unwrap(),
+        serde_json::to_string(&desired_storage).unwrap()
+    );
 }
 
 #[test]
@@ -178,23 +176,22 @@ fn get_allowance() {
     let bump = arena.insert(arg);
     let arg = Value::Union(Union::Left(bump));
     let init = common::create_incoming_managed(payload, arg, storage.clone());
-    if let Outgoing::OutgoingManaged { payload } = invoke_managed(init).unwrap() {
-        assert_eq!(
-            serde_json::to_string(&payload.new_storage).unwrap(),
-            serde_json::to_string(&storage).unwrap()
-        );
+    let ExecutionResult {
+        new_storage, ops, ..
+    } = invoke_managed(init).unwrap();
+    assert_eq!(
+        serde_json::to_string(&new_storage).unwrap(),
+        serde_json::to_string(&storage).unwrap()
+    );
 
-        let fst = arena.insert(Value::Int(0.into()));
-        let snd = arena.insert(Value::String(
-            "KT1WiBZHtvv3EczaN628DkNob4cayHzTEDNK".to_string(),
-        ));
+    let fst = arena.insert(Value::Int(0.into()));
+    let snd = arena.insert(Value::String(
+        "KT1WiBZHtvv3EczaN628DkNob4cayHzTEDNK".to_string(),
+    ));
 
-        let pair = Value::Pair { fst, snd };
-        assert_eq!(
-            serde_json::to_string(&payload.operations).unwrap(),
-            serde_json::to_string(&Value::List(im_rc::vector![pair])).unwrap()
-        );
-    } else {
-        panic!()
-    }
+    let pair = Value::Pair { fst, snd };
+    assert_eq!(
+        serde_json::to_string(&ops).unwrap(),
+        serde_json::to_string(&Value::List(im_rc::vector![pair])).unwrap()
+    );
 }

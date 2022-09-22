@@ -39,7 +39,6 @@ fn benchmark2(num: i64, json: &str) -> (Module, String, i64) {
             gas_limit: 10000,
             call_unit: None,
             call: None,
-            ticket_table: TicketTable::default(),
         })),
     };
     let store = module.store();

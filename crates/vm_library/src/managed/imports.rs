@@ -823,7 +823,9 @@ fn ticket(env: &Context, payload: Value, amount: Value) -> VMResult<i64> {
                 .map_or_else(|| Err(VmError::RuntimeErr("cant happen".to_owned())), Ok)?
             {
                 let handle = env.with_table(|table| {
-                    let handle = table.mint_ticket(nil.clone(), y.to_u32_wrapping(), x);
+                    let string = String::from_utf8_lossy(&x);
+                    let handle =
+                        table.mint_ticket(nil.clone(), y.to_u32_wrapping(), string.to_string());
                     Ok(Value::Ticket(handle))
                 })?;
                 Ok(env.bump(handle) as i64)
@@ -908,7 +910,7 @@ fn read_ticket(env: &Context, payload: Value) -> VMResult<()> {
             let value = ticket_id.data;
             let amount = amount;
             let address = env.bump_raw(Value::String(address));
-            let value = env.bump_raw(Value::Bytes(value));
+            let value = env.bump_raw(Value::Bytes(value.as_bytes().to_vec()));
             let amount = env.bump_raw(Value::Int(amount.into()));
             let p1 = Value::Pair {
                 fst: value,

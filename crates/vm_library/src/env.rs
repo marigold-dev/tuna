@@ -1,5 +1,5 @@
 use crate::{
-    arena::ARENA,
+    arena::{ARENA, TICKETABLE},
     errors::{vm::VmError, VMResult},
     managed::value::Value,
     ticket_table::TicketTable,
@@ -19,7 +19,6 @@ pub struct Inner {
     pub gas_limit: u64,
     pub call_unit: Option<NonNull<wasmer::NativeFunc<(i64, i32), ()>>>,
     pub call: Option<NonNull<wasmer::NativeFunc<(i64, i32), i64>>>,
-    pub ticket_table: TicketTable,
 }
 
 impl Clone for Context {
@@ -156,7 +155,7 @@ impl Context {
             .map_or_else(|| Err(VmError::RuntimeErr("Value doesnt exist".into())), Ok)
     }
     pub fn with_table<A>(&self, f: impl FnOnce(&mut TicketTable) -> VMResult<A>) -> VMResult<A> {
-        let mut t = self.inner.as_ref().borrow_mut();
-        f(&mut t.ticket_table)
+        let t = unsafe { &mut TICKETABLE };
+        f(t)
     }
 }

@@ -1,24 +1,21 @@
 use std::{cell::RefCell, ptr::NonNull, rc::Rc};
 
 use slotmap::{DefaultKey, Key, KeyData};
-use wasmer::{Instance, Module};
+use wasmer::Instance;
 
 use crate::{
     arena::{populate_predef, push_constants, ARENA},
-    compile_store,
     env::{Context, Inner},
     errors::{vm::VmError, VMResult},
+    execution_result::ExecutionResult,
     incoming::InvokeManaged,
     managed::{imports, value::Value},
-    outgoing::{Outgoing, OutgoingManaged},
-    ticket_table::TicketTable,
 };
 
-pub fn invoke_managed(t: InvokeManaged) -> VMResult<Outgoing> {
+pub fn invoke_managed(t: InvokeManaged) -> VMResult<ExecutionResult> {
     let arena = unsafe { &mut ARENA };
 
-    let module: VMResult<Module> =
-        unsafe { Module::deserialize(&compile_store::new_headless(), &t.mod_).map_err(Into::into) };
+    let module = t.mod_;
     let env = Context {
         inner: Rc::new(RefCell::new(Inner {
             instance: None,
@@ -26,12 +23,10 @@ pub fn invoke_managed(t: InvokeManaged) -> VMResult<Outgoing> {
             gas_limit: 10000,
             call_unit: None,
             call: None,
-            ticket_table: TicketTable::default(),
         })),
     };
     populate_predef(t.sender, t.self_addr, t.source);
     push_constants(t.constants);
-    let module = module?;
     let store = module.store();
 
     let instance = Box::from(
@@ -93,13 +88,10 @@ pub fn invoke_managed(t: InvokeManaged) -> VMResult<Outgoing> {
             Value::Pair { fst, snd } => {
                 let value = env.get(*snd)?;
                 let ops = env.get(*fst)?;
-                Ok(Outgoing::OutgoingManaged {
-                    payload: Box::from(OutgoingManaged {
-                        new_storage: value,
-                        operations: ops,
-                        contract_tickets: vec![],
-                        remaining_gas: env.get_gas_left() as usize,
-                    }),
+                Ok(ExecutionResult {
+                    new_storage: value,
+                    ops,
+                    remaining_gas: env.get_gas_left(),
                 })
             }
             _ => Err(VmError::RuntimeErr(

@@ -1,8 +1,8 @@
 use vm_library::{
     arena::ARENA,
+    execution_result::ExecutionResult,
     instance::invoke_managed,
     managed::value::{Union, Value},
-    outgoing::Outgoing,
 };
 
 mod common;
@@ -21,11 +21,9 @@ fn increment() {
     let bump = arena.insert(arg);
     let arg = Value::Union(Union::Left(bump));
     let init = common::create_incoming_managed(payload, arg, storage);
-    if let Outgoing::OutgoingManaged { payload } = invoke_managed(init).unwrap() {
-        assert_eq!(payload.new_storage, Value::Int(5.into()))
-    } else {
-        panic!()
-    }
+    let ExecutionResult { new_storage, .. } = invoke_managed(init).unwrap();
+    assert_eq!(new_storage, Value::Int(5.into()))
+<<<<<<< HEAD
 }
 
 #[test]
@@ -47,6 +45,8 @@ fn decrement() {
       } else {
         panic!()
       }
+=======
+>>>>>>> 9c43713... init global state
 }
 
 #[test]

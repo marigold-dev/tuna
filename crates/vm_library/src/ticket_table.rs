@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
 use thiserror::Error;
 
-use crate::arena::TICKETS;
+use crate::arena::{INVERSETICKETS, TICKETS};
 #[derive(Error, Debug, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum Error {
@@ -32,14 +32,14 @@ fn assert_not_dead(ticket: &Ticket) -> Result<()> {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, PartialOrd, Ord)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, PartialOrd, Ord, Hash)]
 pub struct TicketId {
     pub ticketer: Address,
-    pub data: Vec<u8>,
+    pub data: String,
 }
 
 impl TicketId {
-    pub fn new(contract_addr: Address, data: Vec<u8>) -> Self {
+    pub fn new(contract_addr: Address, data: String) -> Self {
         TicketId {
             ticketer: contract_addr,
             data,
@@ -49,9 +49,9 @@ impl TicketId {
 fn return_true() -> bool {
     true
 }
-#[derive(Clone, Serialize, Deserialize, Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Serialize, Deserialize, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Ticket {
-    ticket_id: TicketId,
+    pub ticket_id: TicketId,
     amount: Amount,
     #[serde(skip_deserializing, default = "return_true")]
     live: bool,
@@ -137,7 +137,7 @@ impl TicketTable {
         )
     }
 
-    pub fn mint_ticket(&mut self, sender: Address, amount: Amount, data: Vec<u8>) -> Handle {
+    pub fn mint_ticket(&mut self, sender: Address, amount: Amount, data: String) -> Handle {
         let ticket_id = TicketId::new(sender, data);
         let ticket = Ticket::new(ticket_id, amount);
         let handle = self.incr();
@@ -193,6 +193,15 @@ impl TicketTable {
             }
         });
     }
+    pub fn populate(&mut self, tickets: &[Ticket]) {
+        let ticket_table = unsafe { &mut INVERSETICKETS };
+        self.table.clear();
+        ticket_table.clear();
+        tickets.iter().enumerate().for_each(|(handle, ticket)| {
+            self.merge(ticket.clone());
+            ticket_table.insert(ticket.clone(), handle);
+        });
+    }
 }
 
 #[cfg(test)]
@@ -207,7 +216,7 @@ mod tests {
             counter: 0,
             table: vec![],
         };
-        let handle = ticket_table.mint_ticket(SENDER.to_owned(), 10, vec![]);
+        let handle = ticket_table.mint_ticket(SENDER.to_owned(), 10, "".to_owned());
         let _ = ticket_table.split_ticket(&handle, (4, 6)).unwrap();
         assert_eq!(
             ticket_table.read_ticket(&handle).unwrap_err(),
@@ -221,8 +230,8 @@ mod tests {
             counter: 0,
             table: vec![],
         };
-        let h1 = ticket_table.mint_ticket(SENDER.to_owned(), 3, vec![]);
-        let h2 = ticket_table.mint_ticket(SENDER.to_owned(), 6, vec![]);
+        let h1 = ticket_table.mint_ticket(SENDER.to_owned(), 3, "".to_owned());
+        let h2 = ticket_table.mint_ticket(SENDER.to_owned(), 6, "".to_owned());
 
         let _ = ticket_table.join_tickets((&h1, &h2)).unwrap();
 
@@ -238,8 +247,8 @@ mod tests {
             counter: 0,
             table: vec![],
         };
-        let h1 = ticket_table.mint_ticket(SENDER.to_owned(), 3, vec![0u8]);
-        let h2 = ticket_table.mint_ticket(SENDER.to_owned(), 6, vec![1u8]);
+        let h1 = ticket_table.mint_ticket(SENDER.to_owned(), 3, "1".to_owned());
+        let h2 = ticket_table.mint_ticket(SENDER.to_owned(), 6, "2".to_owned());
 
         assert_eq!(
             ticket_table.join_tickets((&h1, &h2)).unwrap_err(),
@@ -253,11 +262,11 @@ mod tests {
             counter: 0,
             table: vec![],
         };
-        let h1 = ticket_table.mint_ticket(SENDER.to_owned(), 3, vec![]);
-        let h2 = ticket_table.mint_ticket(SENDER.to_owned(), 6, vec![]);
+        let h1 = ticket_table.mint_ticket(SENDER.to_owned(), 3, "".to_owned());
+        let h2 = ticket_table.mint_ticket(SENDER.to_owned(), 6, "".to_owned());
         let h3 = ticket_table.join_tickets((&h1, &h2)).unwrap();
 
-        let h4 = ticket_table.mint_ticket(SENDER.to_owned(), 12, vec![1u8]);
+        let h4 = ticket_table.mint_ticket(SENDER.to_owned(), 12, "1".to_owned());
         let (h5, h6) = ticket_table.split_ticket(&h4, (4, 8)).unwrap();
         ticket_table.finalize();
         let final_handles = unsafe { &mut TICKETS };

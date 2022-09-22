@@ -18,15 +18,21 @@
     clippy::implicit_clone,
     clippy::redundant_closure_for_method_calls
 )]
-
 pub mod arena;
+pub mod compile;
 pub mod compile_store;
+pub mod contract_address;
 pub(crate) mod conversions;
 pub mod env;
 pub mod errors;
+pub mod execution_result;
 pub mod incoming;
 pub mod instance;
 pub mod managed;
 pub mod outgoing;
-
+pub mod pipe;
+pub mod run_loop;
+pub mod state;
 pub mod ticket_table;
+pub mod vm_client;
+pub mod vm_server;
