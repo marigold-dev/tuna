@@ -262,7 +262,7 @@ impl<'de> Visitor<'de> for ValueVisitor {
                                 &self,
                             ))
                         },
-                        |x| Ok(Value::String(x.to_string())),
+                        |x| Ok(Value::String(x.to_owned())),
                     )
                 }
                 "Union" => {
@@ -418,7 +418,7 @@ impl Serialize for Value {
                 let mut seq = serializer.serialize_tuple(2)?;
                 seq.serialize_element("Bytes")?;
                 seq.serialize_element(
-                    &std::string::String::from_utf8(b.to_vec())
+                    &std::string::String::from_utf8(b.clone())
                         .map_err(serde::ser::Error::custom)?,
                 )?;
                 seq.end()

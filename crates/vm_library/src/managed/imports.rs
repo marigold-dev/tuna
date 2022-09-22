@@ -34,7 +34,7 @@ pub fn or(env: &Context, value1: Value, value2: Value) -> VMResult<i64> {
         (Value::Bool(x), Value::Bool(y)) => Ok(Value::Bool(x | y)),
         (x, _) => Err(FFIError::ExternError {
             value: x,
-            msg: "type mismatch, expected Two Bools".to_string(),
+            msg: "type mismatch, expected Two Bools".to_owned(),
         }
         .into()),
     };
@@ -48,7 +48,7 @@ pub fn and(env: &Context, value1: Value, value2: Value) -> VMResult<i64> {
         (Value::Bool(x), Value::Bool(y)) => Ok(Value::Bool(x && y)),
         (x, _) => Err(FFIError::ExternError {
             value: x,
-            msg: "type mismatch, expected Two Bools".to_string(),
+            msg: "type mismatch, expected Two Bools".to_owned(),
         }
         .into()),
     };
@@ -66,7 +66,7 @@ pub fn neq(env: &Context, value: Value) -> VMResult<i64> {
 
         _ => Err(FFIError::ExternError {
             value: (value).clone(),
-            msg: "type mismatch, expected Int".to_string(),
+            msg: "type mismatch, expected Int".to_owned(),
         }
         .into()),
     }
@@ -85,7 +85,7 @@ pub fn eq(env: &Context, value: Value) -> VMResult<i64> {
 
         _ => Err(FFIError::ExternError {
             value: (value).clone(),
-            msg: "type mismatch, expected Int".to_string(),
+            msg: "type mismatch, expected Int".to_owned(),
         }
         .into()),
     }
@@ -102,7 +102,7 @@ pub fn not(env: &Context, value: Value) -> VMResult<i64> {
 
         _ => Err(FFIError::ExternError {
             value,
-            msg: "type mismatch, expected Bool".to_string(),
+            msg: "type mismatch, expected Bool".to_owned(),
         }
         .into()),
     }
@@ -132,7 +132,7 @@ pub fn unpair(env: &Context, value: Value) -> VMResult<()> {
         }
         _ => Err(FFIError::ExternError {
             value: (value),
-            msg: "type mismatch, expected Pair".to_string(),
+            msg: "type mismatch, expected Pair".to_owned(),
         }
         .into()),
     }
@@ -143,7 +143,7 @@ pub fn car(env: &Context, value: Value) -> VMResult<i64> {
         Value::Pair { fst, snd: _ } => conversions::to_i64(fst.data().as_ffi()),
         _ => Err(FFIError::ExternError {
             value: (value),
-            msg: "type mismatch, expected Pair".to_string(),
+            msg: "type mismatch, expected Pair".to_owned(),
         }
         .into()),
     }
@@ -154,7 +154,7 @@ pub fn cdr(env: &Context, value: Value) -> VMResult<i64> {
         Value::Pair { fst: _, snd } => conversions::to_i64(snd.data().as_ffi()),
         _ => Err(FFIError::ExternError {
             value: (value),
-            msg: "type mismatch, expected Pair".to_string(),
+            msg: "type mismatch, expected Pair".to_owned(),
         }
         .into()),
     }
@@ -169,12 +169,12 @@ pub fn z_add(env: &Context, value1: Value, value2: Value) -> VMResult<i64> {
         }
         (Value::Int(_), err) | (err, Value::Int(_)) => Err(FFIError::ExternError {
             value: (err),
-            msg: "type mismatch, expected Int".to_string(),
+            msg: "type mismatch, expected Int".to_owned(),
         }
         .into()),
         (x, _) => Err(FFIError::ExternError {
             value: x,
-            msg: "type mismatch, expected Int".to_string(),
+            msg: "type mismatch, expected Int".to_owned(),
         }
         .into()),
     }
@@ -189,12 +189,12 @@ pub fn z_sub(env: &Context, value1: Value, value2: Value) -> VMResult<i64> {
         }
         (Value::Int(_), err) | (err, Value::Int(_)) => Err(FFIError::ExternError {
             value: (err),
-            msg: "type mismatch, expected Int".to_string(),
+            msg: "type mismatch, expected Int".to_owned(),
         }
         .into()),
         (x, _) => Err(FFIError::ExternError {
             value: x,
-            msg: "type mismatch, expected Int".to_string(),
+            msg: "type mismatch, expected Int".to_owned(),
         }
         .into()),
     }
@@ -214,7 +214,7 @@ pub fn is_left(env: &Context, value: Value) -> VMResult<i32> {
         }
         _ => Err(FFIError::ExternError {
             value: (value),
-            msg: "type mismatch, expected Union".to_string(),
+            msg: "type mismatch, expected Union".to_owned(),
         }
         .into()),
     }
@@ -225,7 +225,7 @@ pub fn deref_bool(env: &Context, value: Value) -> VMResult<i32> {
         Value::Bool(x) => Ok((x).into()),
         _ => Err(FFIError::ExternError {
             value: (value),
-            msg: "type mismatch, expected Bool".to_string(),
+            msg: "type mismatch, expected Bool".to_owned(),
         }
         .into()),
     }
@@ -236,7 +236,7 @@ pub fn failwith(env: &Context, value: Value) -> VMResult<()> {
         Value::String(str) => Err(VmError::RuntimeErr(str)),
         _ => Err(FFIError::ExternError {
             value: (value).clone(),
-            msg: "type mismatch, expected String".to_string(),
+            msg: "type mismatch, expected String".to_owned(),
         }
         .into()),
     }
@@ -254,7 +254,7 @@ pub fn if_none(env: &Context, value: Value) -> VMResult<i32> {
         ),
         _ => Err(FFIError::ExternError {
             value: (value),
-            msg: "type mismatch, expected Option".to_string(),
+            msg: "type mismatch, expected Option".to_owned(),
         }
         .into()),
     }
@@ -264,7 +264,7 @@ pub fn if_cons(env: &Context, value: Value) -> VMResult<i32> {
     match value {
         Value::List(x) if x.len() == 2 => {
             x.last().map_or_else(
-                || Err(VmError::RuntimeErr("cant happen".to_string())),
+                || Err(VmError::RuntimeErr("cant happen".to_owned())),
                 |v| {
                     let bumped = env.bump(v.clone());
                     let key = conversions::to_i64(bumped)?;
@@ -282,7 +282,7 @@ pub fn if_cons(env: &Context, value: Value) -> VMResult<i32> {
         }
         Value::List(x) if x.len() == 1 => {
             x.head().map_or_else(
-                || Err(VmError::RuntimeErr("cant happen".to_string())),
+                || Err(VmError::RuntimeErr("cant happen".to_owned())),
                 |v| {
                     let bumped = env.bump(v.clone());
                     let key = conversions::to_i64(bumped)?;
@@ -314,7 +314,7 @@ pub fn is_nat(env: &Context, value: Value) -> VMResult<i64> {
         }
         _ => Err(FFIError::ExternError {
             value: (value).clone(),
-            msg: "type mismatch, expected Nat".to_string(),
+            msg: "type mismatch, expected Nat".to_owned(),
         }
         .into()),
     }
@@ -330,7 +330,7 @@ pub fn abs(env: &Context, value: Value) -> VMResult<i64> {
         }
         _ => Err(FFIError::ExternError {
             value: (value).clone(),
-            msg: "type mismatch, expected Nat".to_string(),
+            msg: "type mismatch, expected Nat".to_owned(),
         }
         .into()),
     }
@@ -381,7 +381,7 @@ pub fn right(env: &Context, value: Value) -> VMResult<i64> {
     Ok(key)
 }
 pub fn get_n(env: &Context, idx: u32, value: Value) -> VMResult<i64> {
-    env.update_gas(300 * (idx as u64))?;
+    env.update_gas(300 * u64::from(idx))?;
     if idx == 0 {
         let bumped = env.bump(value);
         let key = conversions::to_i64(bumped)?;
@@ -411,7 +411,7 @@ pub fn get_n(env: &Context, idx: u32, value: Value) -> VMResult<i64> {
             (_, value) => {
                 return Err(FFIError::ExternError {
                     value: (value),
-                    msg: "type mismatch, expected Pair".to_string(),
+                    msg: "type mismatch, expected Pair".to_owned(),
                 }
                 .into())
             }
@@ -437,7 +437,7 @@ pub fn mem(env: &Context, value1: Value, value2: Value) -> VMResult<i64> {
         }
         _ => Err(FFIError::ExternError {
             value: value1,
-            msg: "type mismatch, expected Map/Set with a Key".to_string(),
+            msg: "type mismatch, expected Map/Set with a Key".to_owned(),
         }
         .into()),
     }
@@ -453,7 +453,7 @@ pub fn map_get(env: &Context, value1: Value, value2: Value) -> VMResult<i64> {
         }
         _ => Err(FFIError::ExternError {
             value: value2,
-            msg: "type mismatch, expected Map with a Key".to_string(),
+            msg: "type mismatch, expected Map with a Key".to_owned(),
         }
         .into()),
     }
@@ -477,7 +477,7 @@ pub fn update(env: &Context, map: Value, key: Value, value: Value) -> VMResult<i
         }
         _ => Err(FFIError::ExternError {
             value: map.clone(),
-            msg: "type mismatch, expected Map with a Option Value".to_string(),
+            msg: "type mismatch, expected Map with a Option Value".to_owned(),
         }
         .into()),
     }
@@ -506,7 +506,7 @@ pub fn get_and_update(env: &Context, map: Value, key: Value, value: Value) -> VM
         }
         _ => Err(FFIError::ExternError {
             value: map.clone(),
-            msg: "type mismatch, expected Map with a Option Value".to_string(),
+            msg: "type mismatch, expected Map with a Option Value".to_owned(),
         }
         .into()),
     }
@@ -529,7 +529,7 @@ where
         env.get(DefaultKey::from(KeyData::from_ffi(arg2 as u64))),
     ) {
         (Ok(x), Ok(y)) => f(env, x, y),
-        (_, _) => Err(VmError::RuntimeErr("illegal argument".to_string())),
+        (_, _) => Err(VmError::RuntimeErr("illegal argument".to_owned())),
     }
 }
 
@@ -539,7 +539,7 @@ where
 {
     move |env, arg, arg2| match env.get(DefaultKey::from(KeyData::from_ffi(arg2 as u64))) {
         Ok(x) => f(env, arg, x),
-        _ => Err(VmError::RuntimeErr("illegal argument".to_string())),
+        _ => Err(VmError::RuntimeErr("illegal argument".to_owned())),
     }
 }
 pub const fn call2_mapping<F, A>(f: F) -> impl Fn(&Context, i64, i32) -> VMResult<A>
@@ -548,7 +548,7 @@ where
 {
     move |env, arg, arg2| match env.get(DefaultKey::from(KeyData::from_ffi(arg as u64))) {
         Ok(x) => f(env, x, arg2),
-        _ => Err(VmError::RuntimeErr("illegal argument".to_string())),
+        _ => Err(VmError::RuntimeErr("illegal argument".to_owned())),
     }
 }
 pub const fn call2_default<F, A>(f: F) -> impl Fn(&Context, u32, i64) -> VMResult<A>
@@ -585,7 +585,7 @@ where
         env.get(DefaultKey::from(KeyData::from_ffi(arg2 as u64))),
     ) {
         (Ok(x), Ok(y), Ok(z)) => f(env, x, z, y),
-        _ => Err(VmError::RuntimeErr("illegal argument".to_string())),
+        _ => Err(VmError::RuntimeErr("illegal argument".to_owned())),
     }
 }
 
@@ -932,7 +932,7 @@ fn nil(c: &Context) -> VMResult<i64> {
     let predef = unsafe { &PREDEF };
     let nil = predef
         .get("nil")
-        .map_or_else(|| Err(VmError::RuntimeErr("cant happen".to_string())), Ok)?;
+        .map_or_else(|| Err(VmError::RuntimeErr("cant happen".to_owned())), Ok)?;
     let bumped = c.bump(nil.clone());
     conversions::to_i64(bumped)
 }
@@ -940,7 +940,7 @@ fn unit(c: &Context) -> VMResult<i64> {
     let predef = unsafe { &PREDEF };
     let nil = predef
         .get("unit")
-        .map_or_else(|| Err(VmError::RuntimeErr("cant happen".to_string())), Ok)?;
+        .map_or_else(|| Err(VmError::RuntimeErr("cant happen".to_owned())), Ok)?;
     let bumped = c.bump(nil.clone());
     conversions::to_i64(bumped)
 }
@@ -948,7 +948,7 @@ fn const_(c: &Context, idx: i32) -> VMResult<i64> {
     let predef = unsafe { &CONSTANTS };
     let nil = predef
         .get(idx as usize)
-        .map_or_else(|| Err(VmError::RuntimeErr("cant happen".to_string())), Ok)?;
+        .map_or_else(|| Err(VmError::RuntimeErr("cant happen".to_owned())), Ok)?;
     let bumped = c.bump(nil.clone());
     conversions::to_i64(bumped)
 }
@@ -956,7 +956,7 @@ fn empty_map(c: &Context) -> VMResult<i64> {
     let predef = unsafe { &PREDEF };
     let nil = predef
         .get("empty_map")
-        .map_or_else(|| Err(VmError::RuntimeErr("cant happen".to_string())), Ok)?;
+        .map_or_else(|| Err(VmError::RuntimeErr("cant happen".to_owned())), Ok)?;
     let bumped = c.bump(nil.clone());
     conversions::to_i64(bumped)
 }
@@ -964,7 +964,7 @@ fn empty_set(c: &Context) -> VMResult<i64> {
     let predef = unsafe { &PREDEF };
     let nil = predef
         .get("empty_set")
-        .map_or_else(|| Err(VmError::RuntimeErr("cant happen".to_string())), Ok)?;
+        .map_or_else(|| Err(VmError::RuntimeErr("cant happen".to_owned())), Ok)?;
     let bumped = c.bump(nil.clone());
     conversions::to_i64(bumped)
 }
@@ -973,7 +973,7 @@ fn zero(c: &Context) -> VMResult<i64> {
     let predef = unsafe { &PREDEF };
     let nil = predef
         .get("zero")
-        .map_or_else(|| Err(VmError::RuntimeErr("cant happen".to_string())), Ok)?;
+        .map_or_else(|| Err(VmError::RuntimeErr("cant happen".to_owned())), Ok)?;
     let bumped = c.bump(nil.clone());
     conversions::to_i64(bumped)
 }
@@ -981,7 +981,7 @@ fn self_(c: &Context) -> VMResult<i64> {
     let predef = unsafe { &PREDEF };
     let nil = predef
         .get("self")
-        .map_or_else(|| Err(VmError::RuntimeErr("cant happen".to_string())), Ok)?;
+        .map_or_else(|| Err(VmError::RuntimeErr("cant happen".to_owned())), Ok)?;
     let bumped = c.bump(nil.clone());
     conversions::to_i64(bumped)
 }
@@ -989,7 +989,7 @@ fn sender(c: &Context) -> VMResult<i64> {
     let predef = unsafe { &PREDEF };
     let nil = predef
         .get("sender")
-        .map_or_else(|| Err(VmError::RuntimeErr("cant happen".to_string())), Ok)?;
+        .map_or_else(|| Err(VmError::RuntimeErr("cant happen".to_owned())), Ok)?;
     let bumped = c.bump(nil.clone());
     conversions::to_i64(bumped)
 }
@@ -997,7 +997,7 @@ fn source(c: &Context) -> VMResult<i64> {
     let predef = unsafe { &PREDEF };
     let nil = predef
         .get("source")
-        .map_or_else(|| Err(VmError::RuntimeErr("cant happen".to_string())), Ok)?;
+        .map_or_else(|| Err(VmError::RuntimeErr("cant happen".to_owned())), Ok)?;
     let bumped = c.bump(nil.clone());
     conversions::to_i64(bumped)
 }
@@ -1010,13 +1010,13 @@ fn cons(c: &Context, v1: Value, v2: Value) -> VMResult<i64> {
             let bumped = c.bump(lst);
             conversions::to_i64(bumped)
         }
-        _ => Err(VmError::RuntimeErr("illegal argument".to_string())),
+        _ => Err(VmError::RuntimeErr("illegal argument".to_owned())),
     }
 }
 fn transfer_tokens(env: &Context, v1: Value, v2: Value, v3: Value) -> VMResult<i64> {
     if let Value::Int(x) = v2 {
         if x != Integer::ZERO {
-            return Err(VmError::RuntimeErr("illegal argument".to_string()));
+            return Err(VmError::RuntimeErr("illegal argument".to_owned()));
         }
         let fst = env.bump_raw(v1);
         let snd = env.bump_raw(v3);
@@ -1024,14 +1024,14 @@ fn transfer_tokens(env: &Context, v1: Value, v2: Value, v3: Value) -> VMResult<i
         let bumped = env.bump(pair);
         conversions::to_i64(bumped)
     } else {
-        Err(VmError::RuntimeErr("illegal argument".to_string()))
+        Err(VmError::RuntimeErr("illegal argument".to_owned()))
     }
 }
 fn none(c: &Context) -> VMResult<i64> {
     let predef = unsafe { &PREDEF };
     let nil = predef
         .get("none")
-        .map_or_else(|| Err(VmError::RuntimeErr("cant happen".to_string())), Ok)?;
+        .map_or_else(|| Err(VmError::RuntimeErr("cant happen".to_owned())), Ok)?;
     let bumped = c.bump(nil.clone());
     conversions::to_i64(bumped)
 }
@@ -1067,7 +1067,7 @@ fn map(env: &Context, v: Value, idx: i32) -> VMResult<i64> {
         }
         _ => Err(FFIError::ExternError {
             value: v.clone(),
-            msg: "type mismatch, expected Map with a Option Value".to_string(),
+            msg: "type mismatch, expected Map with a Option Value".to_owned(),
         }
         .into()),
     }
@@ -1089,7 +1089,7 @@ fn exec(env: &Context, v: Value, lam: Value) -> VMResult<i64> {
     } else {
         Err(FFIError::ExternError {
             value: lam,
-            msg: "type mismatch, expected Lambda".to_string(),
+            msg: "type mismatch, expected Lambda".to_owned(),
         }
         .into())
     }
@@ -1123,7 +1123,7 @@ fn apply(env: &Context, v: Value, lam: Value) -> VMResult<i64> {
     } else {
         Err(FFIError::ExternError {
             value: lam,
-            msg: "type mismatch, expected Lambda".to_string(),
+            msg: "type mismatch, expected Lambda".to_owned(),
         }
         .into())
     }
@@ -1142,7 +1142,7 @@ fn iter(env: &Context, v: Value, idx: i32) -> VMResult<()> {
         }),
         _ => Err(FFIError::ExternError {
             value: v.clone(),
-            msg: "type mismatch, expected Map with a Option Value".to_string(),
+            msg: "type mismatch, expected Map with a Option Value".to_owned(),
         }
         .into()),
     }
