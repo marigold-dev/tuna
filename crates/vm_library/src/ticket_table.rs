@@ -207,7 +207,7 @@ mod tests {
             counter: 0,
             table: vec![],
         };
-        let handle = ticket_table.mint_ticket(SENDER.to_string(), 10, vec![]);
+        let handle = ticket_table.mint_ticket(SENDER.to_owned(), 10, vec![]);
         let _ = ticket_table.split_ticket(&handle, (4, 6)).unwrap();
         assert_eq!(
             ticket_table.read_ticket(&handle).unwrap_err(),
@@ -221,8 +221,8 @@ mod tests {
             counter: 0,
             table: vec![],
         };
-        let h1 = ticket_table.mint_ticket(SENDER.to_string(), 3, vec![]);
-        let h2 = ticket_table.mint_ticket(SENDER.to_string(), 6, vec![]);
+        let h1 = ticket_table.mint_ticket(SENDER.to_owned(), 3, vec![]);
+        let h2 = ticket_table.mint_ticket(SENDER.to_owned(), 6, vec![]);
 
         let _ = ticket_table.join_tickets((&h1, &h2)).unwrap();
 
@@ -238,8 +238,8 @@ mod tests {
             counter: 0,
             table: vec![],
         };
-        let h1 = ticket_table.mint_ticket(SENDER.to_string(), 3, vec![0u8]);
-        let h2 = ticket_table.mint_ticket(SENDER.to_string(), 6, vec![1u8]);
+        let h1 = ticket_table.mint_ticket(SENDER.to_owned(), 3, vec![0u8]);
+        let h2 = ticket_table.mint_ticket(SENDER.to_owned(), 6, vec![1u8]);
 
         assert_eq!(
             ticket_table.join_tickets((&h1, &h2)).unwrap_err(),
@@ -253,11 +253,11 @@ mod tests {
             counter: 0,
             table: vec![],
         };
-        let h1 = ticket_table.mint_ticket(SENDER.to_string(), 3, vec![]);
-        let h2 = ticket_table.mint_ticket(SENDER.to_string(), 6, vec![]);
+        let h1 = ticket_table.mint_ticket(SENDER.to_owned(), 3, vec![]);
+        let h2 = ticket_table.mint_ticket(SENDER.to_owned(), 6, vec![]);
         let h3 = ticket_table.join_tickets((&h1, &h2)).unwrap();
 
-        let h4 = ticket_table.mint_ticket(SENDER.to_string(), 12, vec![1u8]);
+        let h4 = ticket_table.mint_ticket(SENDER.to_owned(), 12, vec![1u8]);
         let (h5, h6) = ticket_table.split_ticket(&h4, (4, 8)).unwrap();
         ticket_table.finalize();
         let final_handles = unsafe { &mut TICKETS };

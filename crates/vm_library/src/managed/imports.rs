@@ -820,21 +820,21 @@ fn ticket(env: &Context, payload: Value, amount: Value) -> VMResult<i64> {
             let predef = unsafe { &PREDEF };
             if let Value::String(nil) = predef
                 .get("self")
-                .map_or_else(|| Err(VmError::RuntimeErr("cant happen".to_string())), Ok)?
+                .map_or_else(|| Err(VmError::RuntimeErr("cant happen".to_owned())), Ok)?
             {
                 let handle = env.with_table(|table| {
-                    let handle = table.mint_ticket(nil.to_owned(), y.to_u32_wrapping(), x);
+                    let handle = table.mint_ticket(nil.clone(), y.to_u32_wrapping(), x);
                     Ok(Value::Ticket(handle))
                 })?;
                 Ok(env.bump(handle) as i64)
             } else {
                 Err(VmError::RuntimeErr(
-                    "cant mint ticket, wrong values supplied".to_string(),
+                    "cant mint ticket, wrong values supplied".to_owned(),
                 ))
             }
         }
         _ => Err(VmError::RuntimeErr(
-            "cant mint ticket, wrong values supplied".to_string(),
+            "cant mint ticket, wrong values supplied".to_owned(),
         )),
     }
 }
@@ -842,8 +842,11 @@ fn join_tickets(env: &Context, payload: Value) -> VMResult<i64> {
     if let Value::Pair { fst, snd } = payload {
         match (env.get(fst)?, env.get(snd)?) {
             (Value::Ticket(x), Value::Ticket(y)) => {
-                let handle =
-                    env.with_table(|table| table.join_tickets((&x, &y)).map_err(|x| x.into()));
+                let handle = env.with_table(|table| {
+                    table
+                        .join_tickets((&x, &y))
+                        .map_err(std::convert::Into::into)
+                });
                 handle.map_or_else(
                     |_| Ok(env.bump(Value::Option(None)) as i64),
                     |ok| {
@@ -854,12 +857,12 @@ fn join_tickets(env: &Context, payload: Value) -> VMResult<i64> {
                 )
             }
             _ => Err(VmError::RuntimeErr(
-                "cant join ticket, wrong values supplied".to_string(),
+                "cant join ticket, wrong values supplied".to_owned(),
             )),
         }
     } else {
         Err(VmError::RuntimeErr(
-            "cant join ticket, wrong values supplied".to_string(),
+            "cant join ticket, wrong values supplied".to_owned(),
         ))
     }
 }
@@ -870,7 +873,7 @@ fn split_ticket(env: &Context, payload: Value, nat: Value) -> VMResult<i64> {
                 let handle = env.with_table(|table| {
                     table
                         .split_ticket(&x, (x1.to_u32_wrapping(), x2.to_u32_wrapping()))
-                        .map_err(|x| x.into())
+                        .map_err(std::convert::Into::into)
                 });
                 handle.map_or_else(
                     |_| Ok(env.bump(Value::Option(None)) as i64),
@@ -887,12 +890,12 @@ fn split_ticket(env: &Context, payload: Value, nat: Value) -> VMResult<i64> {
                 )
             }
             _ => Err(VmError::RuntimeErr(
-                "cant join ticket, wrong values supplied".to_string(),
+                "cant join ticket, wrong values supplied".to_owned(),
             )),
         }
     } else {
         Err(VmError::RuntimeErr(
-            "cant join ticket, wrong values supplied".to_string(),
+            "cant join ticket, wrong values supplied".to_owned(),
         ))
     }
 }
@@ -924,7 +927,7 @@ fn read_ticket(env: &Context, payload: Value) -> VMResult<()> {
             Ok(())
         }
         _ => Err(VmError::RuntimeErr(
-            "cant mint ticket, wrong values supplied".to_string(),
+            "cant mint ticket, wrong values supplied".to_owned(),
         )),
     }
 }
