@@ -369,6 +369,8 @@ let rec compile_value parsed : (Values.t, [> `Unexpected_error ]) result =
     in
     let* elements = aux elements in
     Ok (Values.List elements)
+  | Prim (_, I_EMPTY_MAP, _, _) -> Ok (Map Map.empty)
+  | Prim (_, I_EMPTY_SET, _, _) -> Ok (Set Set.empty)
   | _ -> Error `Unexpected_error
 
 and compile_map parsed =
