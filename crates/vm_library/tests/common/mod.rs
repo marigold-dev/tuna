@@ -17,9 +17,9 @@ pub fn create_incoming_managed(s: String, arg: Value, initial_storage: Value) ->
         initial_storage,
         constants: deser.constants,
         tickets: vec![],
-        source: "admin".to_string(),
-        sender: "admin".to_string(),
-        self_addr: "contract".to_string(),
+        source: "tz1gvF4cD2dDtqitL3ZTraggSR1Mju2BKFEM".to_string(),
+        sender: "tz1gvF4cD2dDtqitL3ZTraggSR1Mju2BKFEM".to_string(),
+        self_addr: "KT1WiBZHtvv3EczaN628DkNob4cayHzTEDNK".to_string(),
         gas_limit: usize::MAX,
     }
 }
