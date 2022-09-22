@@ -458,7 +458,7 @@ pub fn map_get(env: &Context, value1: Value, value2: Value) -> VMResult<i64> {
         .into()),
     }
 }
-pub fn update(env: &Context, map: Value, key: Value, value: Value) -> VMResult<i64> {
+pub fn update(env: &Context, key: Value, value: Value, map: Value) -> VMResult<i64> {
     env.update_gas(300)?;
     match (&map, value) {
         (Value::Map(x), Value::Option(boxed)) => {
@@ -482,7 +482,7 @@ pub fn update(env: &Context, map: Value, key: Value, value: Value) -> VMResult<i
         .into()),
     }
 }
-pub fn get_and_update(env: &Context, map: Value, key: Value, value: Value) -> VMResult<()> {
+pub fn get_and_update(env: &Context, key: Value, value: Value, map: Value) -> VMResult<()> {
     env.update_gas(300)?;
     match (&map, value) {
         (Value::Map(x), Value::Option(boxed)) => {

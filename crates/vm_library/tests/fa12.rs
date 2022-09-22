@@ -56,7 +56,10 @@ fn get_total_supply() {
 
     let arena = unsafe { &mut ARENA };
     let storage:Value = serde_json::from_str(r#"["Pair",["Map",[[["String","tz1gvF4cD2dDtqitL3ZTraggSR1Mju2BKFEM"],["Pair",["Map",[[["String","tz1RAwmGfeTzkpQjY8LV1GsiU2oGS6nhqS93"],["Int","10"]]]],["Int","100"]]]]],["Int","100"]]"#).unwrap();
-    let arg :Value = serde_json::from_str(r#"["Pair",["Unit"],["String","KT1WiBZHtvv3EczaN628DkNob4cayHzTEDNK"]]"#).unwrap();
+    let arg: Value = serde_json::from_str(
+        r#"["Pair",["Unit"],["String","KT1WiBZHtvv3EczaN628DkNob4cayHzTEDNK"]]"#,
+    )
+    .unwrap();
     let bump = arena.insert(arg);
     let arg = Value::Union(Union::Right(bump));
     let bump = arena.insert(arg);
@@ -90,8 +93,11 @@ fn approve() {
 
     let arena = unsafe { &mut ARENA };
     let storage:Value = serde_json::from_str(r#"["Pair",["Map",[[["String","tz1gvF4cD2dDtqitL3ZTraggSR1Mju2BKFEM"],["Pair",["Map",[[["String","tz1RAwmGfeTzkpQjY8LV1GsiU2oGS6nhqS93"],["Int","10"]]]],["Int","100"]]]]],["Int","100"]]"#).unwrap();
-    let desired_storage:Value = serde_json::from_str(r#"["Pair",["Map",[[["String","tz1gvF4cD2dDtqitL3ZTraggSR1Mju2BKFEM"],["Pair",["Map",[[["String","tz1RAwmGfeTzkpQjY8LV1GsiU2oGS6nhqS93"],["Int","5"]]]],["Int","100"]]]]],["Int","100"]]"#).unwrap();
-    let arg :Value = serde_json::from_str(r#"["Pair",["String", "tz1gvF4cD2dDtqitL3ZTraggSR1Mju2BKFEM"],["Int","5"]]"#).unwrap();
+    let desired_storage:Value = serde_json::from_str(r#"["Pair",["Map",[[["String","tz1gvF4cD2dDtqitL3ZTraggSR1Mju2BKFEM"],["Pair",["Map",[[["String","tz1RAwmGfeTzkpQjY8LV1GsiU2oGS6nhqS93"],["Int","10"]],[["String","tz1gvF4cD2dDtqitL3ZTraggSR1Mju2BKFEM"],["Int","5"]]]],["Int","100"]]]]],["Int","100"]]"#).unwrap();
+    let arg: Value = serde_json::from_str(
+        r#"["Pair",["String", "tz1gvF4cD2dDtqitL3ZTraggSR1Mju2BKFEM"],["Int","5"]]"#,
+    )
+    .unwrap();
     let bump = arena.insert(arg);
     let arg = Value::Union(Union::Left(bump));
     let bump = arena.insert(arg);
@@ -177,7 +183,7 @@ fn get_allowance() {
             serde_json::to_string(&payload.new_storage).unwrap(),
             serde_json::to_string(&storage).unwrap()
         );
-        
+
         let fst = arena.insert(Value::Int(0.into()));
         let snd = arena.insert(Value::String(
             "KT1WiBZHtvv3EczaN628DkNob4cayHzTEDNK".to_string(),
