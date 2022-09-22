@@ -11,6 +11,7 @@ use crate::{
     incoming::InvokeManaged,
     managed::{imports, value::Value},
     outgoing::{Outgoing, OutgoingManaged},
+    ticket_table::TicketTable,
 };
 
 pub fn invoke_managed(t: InvokeManaged) -> VMResult<Outgoing> {
@@ -26,6 +27,7 @@ pub fn invoke_managed(t: InvokeManaged) -> VMResult<Outgoing> {
             gas_limit: 10000,
             call_unit: None,
             call: None,
+            ticket_table: TicketTable::default(),
         })),
     };
     populate_predef(t.sender, t.self_addr, t.source);
@@ -34,8 +36,10 @@ pub fn invoke_managed(t: InvokeManaged) -> VMResult<Outgoing> {
     let store = module.store();
 
     let instance = Box::from(
-        Instance::new(&module, &imports::make_imports(&env, store))
-            .map_err(|_| VmError::RuntimeErr("Failed to create instance".to_string()))?,
+        Instance::new(&module, &imports::make_imports(&env, store)).map_err(|x| {
+            dbg!(x);
+            VmError::RuntimeErr("Failed to create instance".to_owned())
+        })?,
     );
 
     {
@@ -44,19 +48,19 @@ pub fn invoke_managed(t: InvokeManaged) -> VMResult<Outgoing> {
             instance
                 .exports
                 .get_native_function::<i64, ()>("push")
-                .map_err(|_| VmError::RuntimeErr("Miscompiled contract".to_string()))?,
+                .map_err(|_| VmError::RuntimeErr("Miscompiled contract".to_owned()))?,
         );
         let call_unit = Box::from(
             instance
                 .exports
                 .get_native_function::<(i64, i32), ()>("call_callback_unit")
-                .map_err(|_| VmError::RuntimeErr("Miscompiled contract".to_string()))?,
+                .map_err(|_| VmError::RuntimeErr("Miscompiled contract".to_owned()))?,
         );
         let call = Box::from(
             instance
                 .exports
                 .get_native_function::<(i64, i32), i64>("call_callback")
-                .map_err(|_| VmError::RuntimeErr("Miscompiled contract".to_string()))?,
+                .map_err(|_| VmError::RuntimeErr("Miscompiled contract".to_owned()))?,
         );
 
         env.set_instance(Some(new));

@@ -7,5 +7,5 @@ pub mod incoming;
 pub mod instance;
 pub mod managed;
 pub mod outgoing;
-pub mod ticket;
+
 pub mod ticket_table;

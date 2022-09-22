@@ -1,6 +1,6 @@
 use std::ops::{Add, Sub};
 
-use im_rc::Vector;
+use im_rc::{OrdSet, Vector};
 use rug::Integer;
 use slotmap::{DefaultKey, Key, KeyData};
 use wasmer::{Exports, Function, ImportObject, Store};
@@ -797,24 +797,137 @@ pub fn make_imports(env: &Context, store: &Store) -> ImportObject {
     // TODO!
     exports.insert(
         "ticket",
-        Function::new_native_with_env(store, env.clone(), call2(equal)),
+        Function::new_native_with_env(store, env.clone(), call2(ticket)),
     );
     exports.insert(
         "read_ticket",
-        Function::new_native_with_env(store, env.clone(), call1(failwith)),
+        Function::new_native_with_env(store, env.clone(), call1(read_ticket)),
     );
     exports.insert(
         "split_ticket",
-        Function::new_native_with_env(store, env.clone(), call2(apply)),
+        Function::new_native_with_env(store, env.clone(), call2(split_ticket)),
     );
     exports.insert(
         "join_tickets",
-        Function::new_native_with_env(store, env.clone(), call1(eq)),
+        Function::new_native_with_env(store, env.clone(), call1(join_tickets)),
     );
     imports.register("env", exports);
     imports
 }
+fn ticket(env: &Context, payload: Value, amount: Value) -> VMResult<i64> {
+    match (payload, amount) {
+        (Value::Bytes(x), Value::Int(y)) => {
+            let predef = unsafe { &PREDEF };
+            if let Value::String(nil) = predef
+                .get("self")
+                .map_or_else(|| Err(VmError::RuntimeErr("cant happen".to_string())), Ok)?
+            {
+                let handle = env.with_table(|table| {
+                    let handle = table.mint_ticket(nil.to_owned(), y.to_u32_wrapping(), x);
+                    Ok(Value::Ticket(handle))
+                })?;
+                Ok(env.bump(handle) as i64)
+            } else {
+                Err(VmError::RuntimeErr(
+                    "cant mint ticket, wrong values supplied".to_string(),
+                ))
+            }
+        }
+        _ => Err(VmError::RuntimeErr(
+            "cant mint ticket, wrong values supplied".to_string(),
+        )),
+    }
+}
+fn join_tickets(env: &Context, payload: Value) -> VMResult<i64> {
+    if let Value::Pair { fst, snd } = payload {
+        match (env.get(fst)?, env.get(snd)?) {
+            (Value::Ticket(x), Value::Ticket(y)) => {
+                let handle =
+                    env.with_table(|table| table.join_tickets((&x, &y)).map_err(|x| x.into()));
+                handle.map_or_else(
+                    |_| Ok(env.bump(Value::Option(None)) as i64),
+                    |ok| {
+                        let ticket = Value::Ticket(ok);
+                        let value = Value::Option(Some(env.bump_raw(ticket)));
+                        Ok(env.bump(value) as i64)
+                    },
+                )
+            }
+            _ => Err(VmError::RuntimeErr(
+                "cant join ticket, wrong values supplied".to_string(),
+            )),
+        }
+    } else {
+        Err(VmError::RuntimeErr(
+            "cant join ticket, wrong values supplied".to_string(),
+        ))
+    }
+}
+fn split_ticket(env: &Context, payload: Value, nat: Value) -> VMResult<i64> {
+    if let (Value::Pair { fst, snd }, Value::Ticket(x)) = (nat, payload) {
+        match (env.get(fst)?, env.get(snd)?) {
+            (Value::Int(x1), Value::Int(x2)) => {
+                let handle = env.with_table(|table| {
+                    table
+                        .split_ticket(&x, (x1.to_u32_wrapping(), x2.to_u32_wrapping()))
+                        .map_err(|x| x.into())
+                });
+                handle.map_or_else(
+                    |_| Ok(env.bump(Value::Option(None)) as i64),
+                    |(h1, h2)| {
+                        let ticket1 = env.bump_raw(Value::Ticket(h1));
+                        let ticket2 = env.bump_raw(Value::Ticket(h2));
 
+                        let value = Value::Pair {
+                            fst: ticket1,
+                            snd: ticket2,
+                        };
+                        Ok(env.bump(value) as i64)
+                    },
+                )
+            }
+            _ => Err(VmError::RuntimeErr(
+                "cant join ticket, wrong values supplied".to_string(),
+            )),
+        }
+    } else {
+        Err(VmError::RuntimeErr(
+            "cant join ticket, wrong values supplied".to_string(),
+        ))
+    }
+}
+fn read_ticket(env: &Context, payload: Value) -> VMResult<()> {
+    match payload {
+        Value::Ticket(x) => {
+            let (ticket_id, amount, handle) =
+                env.with_table(|table| Ok(table.read_ticket(&x)))??;
+            let address = ticket_id.ticketer;
+            let value = ticket_id.data;
+            let amount = amount;
+            let address = env.bump_raw(Value::String(address));
+            let value = env.bump_raw(Value::Bytes(value));
+            let amount = env.bump_raw(Value::Int(amount.into()));
+            let p1 = Value::Pair {
+                fst: value,
+                snd: amount,
+            };
+            let p1 = env.bump_raw(p1);
+            let p1 = Value::Pair {
+                fst: address,
+                snd: p1,
+            };
+            let p1 = env.bump(p1);
+
+            env.push_value(env.bump(Value::Ticket(handle)) as i64)?;
+            env.push_value(p1 as i64)?;
+
+            Ok(())
+        }
+        _ => Err(VmError::RuntimeErr(
+            "cant mint ticket, wrong values supplied".to_string(),
+        )),
+    }
+}
 fn nil(c: &Context) -> VMResult<i64> {
     let predef = unsafe { &PREDEF };
     let nil = predef
@@ -938,6 +1051,20 @@ fn map(env: &Context, v: Value, idx: i32) -> VMResult<i64> {
             let bumped = env.bump(Value::List(val));
             Ok(bumped as i64)
         }
+        Value::Set(x) => {
+            let new: VMResult<OrdSet<Value>> = x
+                .iter()
+                .map(|x| {
+                    let reff = x.clone();
+                    let bumped = env.bump(reff);
+                    let res = env.call(bumped as i64, idx)?;
+                    env.get(DefaultKey::from(KeyData::from_ffi(res as u64)))
+                })
+                .collect();
+            let val = new?;
+            let bumped = env.bump(Value::Set(val));
+            Ok(bumped as i64)
+        }
         _ => Err(FFIError::ExternError {
             value: v.clone(),
             msg: "type mismatch, expected Map with a Option Value".to_string(),
@@ -1004,6 +1131,11 @@ fn apply(env: &Context, v: Value, lam: Value) -> VMResult<i64> {
 fn iter(env: &Context, v: Value, idx: i32) -> VMResult<()> {
     match v {
         Value::List(x) => x.iter().try_for_each(|x| {
+            let reff = x.clone();
+            let bumped = env.bump(reff);
+            env.call_unit(bumped as i64, idx)
+        }),
+        Value::Set(x) => x.iter().try_for_each(|x| {
             let reff = x.clone();
             let bumped = env.bump(reff);
             env.call_unit(bumped as i64, idx)

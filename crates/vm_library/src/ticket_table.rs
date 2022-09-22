@@ -1,6 +1,8 @@
 use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
 use thiserror::Error;
+
+use crate::arena::TICKETS;
 #[derive(Error, Debug, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum Error {
@@ -30,10 +32,10 @@ fn assert_not_dead(ticket: &Ticket) -> Result<()> {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, PartialOrd, Ord)]
 pub struct TicketId {
-    ticketer: Address,
-    data: Vec<u8>,
+    pub ticketer: Address,
+    pub data: Vec<u8>,
 }
 
 impl TicketId {
@@ -47,7 +49,7 @@ impl TicketId {
 fn return_true() -> bool {
     true
 }
-#[derive(Clone, Serialize, Deserialize, Debug)]
+#[derive(Clone, Serialize, Deserialize, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Ticket {
     ticket_id: TicketId,
     amount: Amount,
@@ -99,6 +101,15 @@ impl Ticket {
 pub struct TicketTable {
     pub counter: Handle,
     pub table: Vec<Ticket>,
+}
+
+impl Default for TicketTable {
+    fn default() -> Self {
+        Self {
+            counter: 0,
+            table: Vec::with_capacity(1000),
+        }
+    }
 }
 
 impl TicketTable {
@@ -173,16 +184,14 @@ impl TicketTable {
         }
     }
 
-    pub fn finalize(&self) -> Vec<(Handle, TicketId, Amount)> {
-        let mut result = vec![];
-        for i in 0..self.table.len() {
-            let ticket = &self.table[i];
+    pub fn finalize(&self) {
+        let ticket_table = unsafe { &mut TICKETS };
+        ticket_table.clear();
+        self.table.iter().enumerate().for_each(|(handle, ticket)| {
             if ticket.live {
-                result.push((i, ticket.ticket_id.clone(), ticket.amount));
+                ticket_table.insert(handle, ticket.clone());
             }
-        }
-
-        result
+        });
     }
 }
 
@@ -250,11 +259,11 @@ mod tests {
 
         let h4 = ticket_table.mint_ticket(SENDER.to_string(), 12, vec![1u8]);
         let (h5, h6) = ticket_table.split_ticket(&h4, (4, 8)).unwrap();
-        let final_handles: Vec<usize> = ticket_table
-            .finalize()
-            .into_iter()
-            .map(|(handle, _, _)| handle)
-            .collect();
-        assert_eq!(final_handles, vec![h3, h5, h6])
+        ticket_table.finalize();
+        let final_handles = unsafe { &mut TICKETS };
+        assert_eq!(
+            final_handles.keys().cloned().collect::<Vec<usize>>(),
+            vec![h3, h5, h6]
+        )
     }
 }

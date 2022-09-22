@@ -1,7 +1,7 @@
 use im_rc::{ordmap, ordset, vector};
 use slotmap::{DefaultKey, HopSlotMap};
 
-use crate::managed::value::Value;
+use crate::{managed::value::Value, ticket_table::Ticket};
 use once_cell::unsync::Lazy;
 
 pub static mut ARENA: Lazy<HopSlotMap<DefaultKey, Value>> =
@@ -10,6 +10,8 @@ pub static mut ARENA: Lazy<HopSlotMap<DefaultKey, Value>> =
 use std::collections::BTreeMap;
 pub static mut PREDEF: Lazy<BTreeMap<String, Value>> = Lazy::new(BTreeMap::new);
 pub static mut CONSTANTS: Lazy<Vec<Value>> = Lazy::new(|| Vec::with_capacity(3000));
+pub static mut TICKETS: Lazy<BTreeMap<usize, Ticket>> = Lazy::new(BTreeMap::new);
+pub static mut INVERSETICKETS: Lazy<BTreeMap<Ticket, usize>> = Lazy::new(BTreeMap::new);
 
 pub fn populate_predef(sender: String, self_: String, source: String) {
     let map = unsafe { &mut PREDEF };
