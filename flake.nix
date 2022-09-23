@@ -9,6 +9,7 @@
   inputs = {
     nixpkgs.url = "github:nix-ocaml/nix-overlays";
     flake-utils.url = "github:numtide/flake-utils";
+    nix-filter.url = "github:numtide/nix-filter";
 
     tezos.url = "github:marigold-dev/tezos-nix";
     tezos.inputs = {
@@ -20,6 +21,7 @@
     self,
     nixpkgs,
     flake-utils,
+    nix-filter,
     tezos
   }:
     flake-utils.lib.eachDefaultSystem (system:
@@ -35,8 +37,8 @@
       in
     {
       packages = {
-        default = pkgs.ocamlPackages.callPackage ./nix/tuna.nix { };
-        vm_library = pkgs.callPackage ./nix/vm_library.nix {};
+        default = pkgs.ocamlPackages.callPackage ./nix/tuna.nix { inherit nix-filter; };
+        vm_library = pkgs.callPackage ./nix/vm_library.nix { inherit nix-filter; };
         tuna = self.packages.${system}.default;
       };
     });

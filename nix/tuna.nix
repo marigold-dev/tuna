@@ -1,4 +1,5 @@
 {
+  nix-filter,
   lib,
   buildDunePackage,
   zarith,
@@ -15,7 +16,16 @@ buildDunePackage {
   pname = "tunac";
   version = "1.0.0";
 
-  src = ../.;
+  src = with nix-filter.lib; filter {
+    root = ../.;
+    include = [
+      "packages"
+      "tunac.opam"
+      "dune-project"
+      "dune"
+      ".ocamlformat"
+    ];
+  };
 
   propagatedBuildInputs = [
     zarith
