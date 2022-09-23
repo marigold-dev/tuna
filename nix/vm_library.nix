@@ -20,4 +20,6 @@ rustPlatform.buildRustPackage rec {
   buildInputs = [
     gmp
   ];
+
+  doCheck = false;
 }
