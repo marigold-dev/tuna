@@ -18,7 +18,7 @@ pub fn create_incoming_managed(s: String, arg: Value, initial_storage: Value) ->
         source: "tz1gvF4cD2dDtqitL3ZTraggSR1Mju2BKFEM".to_string(),
         sender: "tz1gvF4cD2dDtqitL3ZTraggSR1Mju2BKFEM".to_string(),
         self_addr: "KT1WiBZHtvv3EczaN628DkNob4cayHzTEDNK".to_string(),
-        gas_limit: usize::MAX,
+        gas_limit: u64::MAX,
     }
 }
 

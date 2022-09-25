@@ -10,5 +10,5 @@ pub struct InvokeManaged {
     pub source: String,
     pub sender: String,
     pub self_addr: String,
-    pub gas_limit: usize,
+    pub gas_limit: u64,
 }

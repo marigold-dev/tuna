@@ -1,4 +1,4 @@
-use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
+use criterion::{criterion_group, criterion_main, Criterion};
 use mimalloc::MiMalloc;
 
 #[global_allocator]
@@ -31,7 +31,7 @@ fn criterion_benchmark(c: &mut Criterion) {
     //     |b, (json, num)| b.iter(|| benchmark(*num, json)),
     // );
     let mut pref = util::originate(originate);
-    let mut pref2 = util::originate(invoke);
+    let mut pref2 = util::invoke(invoke);
 
     c.bench_function("oritinatre", |b| b.iter(|| pref(&mut init)));
     c.bench_function("invoke", |b| b.iter(|| pref2(&mut init)));

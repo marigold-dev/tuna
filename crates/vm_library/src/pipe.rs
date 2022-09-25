@@ -1,14 +1,14 @@
 use std::{
     fs::{File, OpenOptions},
-    io::{self, Read, Write},
+    io::{self, BufReader, BufWriter, Read, Write},
     path::Path,
 };
 
 use crate::{vm_client::ClientMessage, vm_server::ServerMessage};
 
 pub struct IO {
-    reader: File,
-    writer: File,
+    reader: BufReader<File>,
+    writer: BufWriter<File>,
 }
 
 use nix::sys::stat::Mode;
@@ -42,9 +42,12 @@ impl IO {
         let writer = OpenOptions::create(OpenOptions::new().write(true), false)
             .open(&write_path)
             .expect("failed to create");
-        let reader = std::fs::File::open(read_path).expect("pipe doesnt exist");
+        let reader = BufReader::new(std::fs::File::open(read_path).expect("pipe doesnt exist"));
 
-        Self { reader, writer }
+        Self {
+            reader,
+            writer: BufWriter::new(writer),
+        }
     }
 
     pub fn read(&mut self) -> ClientMessage {
@@ -58,7 +61,7 @@ impl IO {
         self.reader
             .read_exact(&mut buf[..])
             .expect("Bad interop format");
-        serde_json::from_slice(&buf[..]).expect("Bad interop format")
+        serde_json::from_slice(&buf[..len]).expect("Bad interop format")
     }
     pub fn write(&mut self, msg: &ServerMessage) {
         let msg = serde_json::to_vec(msg).expect("Failed to write to pipe");

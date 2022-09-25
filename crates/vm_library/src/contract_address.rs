@@ -30,12 +30,7 @@ pub struct ContractAddress(
     #[serde(serialize_with = "serializer", deserialize_with = "deserialize")] Vec<u8>,
 );
 impl ContractAddress {
-    pub fn new(s: String) -> Self {
-        Self(Blake2b160::digest(s).to_vec())
-    }
-}
-impl ContractAddress {
-    pub fn from_operation(s: String) -> Self {
+    pub fn new(s: &[u8]) -> Self {
         Self(Blake2b160::digest(s).to_vec())
     }
 }

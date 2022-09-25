@@ -154,11 +154,11 @@ fn handle_originate(
     operation_hash: String,
     originated_by: String,
 ) -> VMResult<ContractAddress> {
-    let module = compile::compile_managed_module(module)?;
+    let module = compile::compile_managed_module(module.as_bytes())?;
     let serialized = module
         .serialize()
         .map_err(|x| VmError::CompileErr(x.to_string()))?;
-    let addr = ContractAddress::new(operation_hash);
+    let addr = ContractAddress::new(operation_hash.as_bytes());
     let contract_type = ContractType {
         self_: addr.clone(),
         originated_by,
@@ -217,7 +217,7 @@ fn handle_invoke(
                         .sender
                         .unwrap_or_else(|| transaction.source.clone()),
                     self_addr: serde_json::to_string(&address).expect("error"),
-                    gas_limit: gas_limit as usize,
+                    gas_limit,
                 };
                 let self_addr = serde_json::to_string(&address).expect("error");
                 match invoke_managed(invoke_payload) {

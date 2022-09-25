@@ -5,11 +5,10 @@ use crate::{
     errors::{vm::VmError, VMResult},
 };
 
-pub fn compile_managed_module(m: String) -> VMResult<Module> {
+pub fn compile_managed_module(m: &[u8]) -> VMResult<Module> {
     wasmer::Module::new(
         &new_compile_store(),
-        wat2wasm(m.as_bytes())
-            .map_err(|_| VmError::CompileErr("failed to compile module".to_owned()))?,
+        wat2wasm(m).map_err(|_| VmError::CompileErr("failed to compile module".to_owned()))?,
     )
     .map_err(std::convert::Into::into)
 }

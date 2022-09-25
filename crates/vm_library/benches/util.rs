@@ -1,14 +1,14 @@
 use std::{
     fs::{File, OpenOptions},
-    io::{Read, Write},
+    io::{BufReader, BufWriter, Read, Write},
     path::Path,
 };
 
 use {vm_library::vm_client::ClientMessage, vm_library::vm_server::ServerMessage};
 
 pub struct IO {
-    reader: File,
-    writer: File,
+    reader: BufReader<File>,
+    writer: BufWriter<File>,
 }
 
 use fnv::FnvHashMap;
@@ -52,7 +52,10 @@ impl IO {
         let writer = OpenOptions::create(OpenOptions::new().write(true), false)
             .open(&write_path)
             .expect("failed to create");
-        Self { reader, writer }
+        Self {
+            reader: BufReader::new(reader),
+            writer: BufWriter::new(writer),
+        }
     }
 
     pub fn read(&mut self) -> ServerMessage {
@@ -114,7 +117,7 @@ pub fn invoke(operation: String) -> impl FnMut(&mut IO) {
         operation_raw_hash: "test".to_string(),
         tickets: vec![],
     };
-    let msg = serde_json::to_vec(&t).expect("Failed to write to pipe");
+    let msg = serde_json::to_vec(&ClientMessage::Transaction(t)).expect("Failed to write to pipe");
 
     move |io| {
         io.write(&msg);
