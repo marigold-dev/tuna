@@ -1,7 +1,7 @@
-use std::ops::{Add, BitOr, BitXor, Mul, Neg, Shl, Sub};
+use std::ops::{Add, BitOr, BitXor, Mul, Neg, Sub};
 
 use im_rc::{OrdSet, Vector};
-use rug::{ops::DivRounding, Integer};
+use rug::Integer;
 use slotmap::{DefaultKey, Key, KeyData};
 use wasmer::{Exports, Function, ImportObject, Store};
 

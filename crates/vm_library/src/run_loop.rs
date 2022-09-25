@@ -51,7 +51,6 @@ pub fn run_loop(mut io: IO) {
         let arena = unsafe { &mut ARENA };
 
         arena.clear();
-
         'inner: loop {
             let msg = context.io.read();
             match msg {
@@ -64,7 +63,6 @@ pub fn run_loop(mut io: IO) {
                 ClientMessage::NoopTransaction => break 'inner,
                 x => panic!("run_loop not supported, {:?}", x),
             }
-            context.io.write(&ServerMessage::Stop);
             context.to_revert.clear();
         }
     }

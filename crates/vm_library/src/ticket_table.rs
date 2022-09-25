@@ -173,7 +173,6 @@ impl TicketTable {
     pub fn join_tickets(&mut self, handles: (&Handle, &Handle)) -> Result<Handle> {
         let t1 = self.unsafe_read(handles.0)?;
         let t2 = self.unsafe_read(handles.1)?;
-        dbg!(&t1, &t2);
         if t1.ticket_id == t2.ticket_id {
             let ticket = Ticket::join(t1, t2);
             let handle = self.incr();

@@ -39,11 +39,10 @@ impl IO {
         read_path.push_str("_write");
         let reader_path = Path::new(&read_path);
         unistd::mkfifo(reader_path, server_mode).unwrap_or(());
-
-        let reader = std::fs::File::open(read_path).expect("pipe doesnt exist");
         let writer = OpenOptions::create(OpenOptions::new().write(true), false)
             .open(&write_path)
             .expect("failed to create");
+        let reader = std::fs::File::open(read_path).expect("pipe doesnt exist");
 
         Self { reader, writer }
     }
@@ -59,8 +58,7 @@ impl IO {
         self.reader
             .read_exact(&mut buf[..])
             .expect("Bad interop format");
-
-        serde_json::from_slice(&buf).expect("Bad interop format")
+        serde_json::from_slice(&buf[..]).expect("Bad interop format")
     }
     pub fn write(&mut self, msg: &ServerMessage) {
         let msg = serde_json::to_vec(msg).expect("Failed to write to pipe");

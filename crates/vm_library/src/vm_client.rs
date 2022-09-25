@@ -177,7 +177,7 @@ impl Serialize for ClientMessage {
             }
             ClientMessage::Transaction(s) => {
                 let mut seq = serializer.serialize_tuple(2)?;
-                seq.serialize_element("Transatcion")?;
+                seq.serialize_element("Transaction")?;
                 seq.serialize_element(s)?;
                 seq.end()
             }

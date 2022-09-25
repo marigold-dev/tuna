@@ -31,7 +31,11 @@ impl Serialize for ServerMessage {
                 seq.serialize_element(x)?;
                 seq.end()
             }
-            ServerMessage::Stop => serializer.serialize_str("Stop"),
+            ServerMessage::Stop => {
+                let mut seq = serializer.serialize_tuple(1)?;
+                seq.serialize_element("Stop")?;
+                seq.end()
+            }
             ServerMessage::Set(s) => {
                 let mut seq = serializer.serialize_tuple(2)?;
                 seq.serialize_element("Set")?;
