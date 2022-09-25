@@ -17,7 +17,7 @@ fn encode(s: &[u8]) -> String {
         .with_alphabet(bs58::Alphabet::BITCOIN)
         .into_string()
 }
-fn decode(s: String) -> Result<Vec<u8>, bs58::decode::Error> {
+pub fn decode(s: &[u8]) -> Result<Vec<u8>, bs58::decode::Error> {
     let s = bs58::decode(&s)
         .with_alphabet(bs58::Alphabet::BITCOIN)
         .into_vec()?;
@@ -26,26 +26,9 @@ fn decode(s: String) -> Result<Vec<u8>, bs58::decode::Error> {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize, Hash, PartialOrd, Ord)]
-pub struct ContractAddress(
-    #[serde(serialize_with = "serializer", deserialize_with = "deserialize")] Vec<u8>,
-);
+pub struct ContractAddress(pub String);
 impl ContractAddress {
     pub fn new(s: &[u8]) -> Self {
-        Self(Blake2b160::digest(s).to_vec())
+        Self(encode(&Blake2b160::digest(s)))
     }
-}
-
-fn deserialize<'de, D>(deserializer: D) -> Result<Vec<u8>, D::Error>
-where
-    D: serde::de::Deserializer<'de>,
-{
-    let s: String = serde::de::Deserialize::deserialize(deserializer)?;
-    decode(s).map_err(|_| serde::de::Error::custom("error deserializing contract_address"))
-}
-
-fn serializer<D>(t: &[u8], serializer: D) -> Result<D::Ok, D::Error>
-where
-    D: serde::ser::Serializer,
-{
-    serializer.serialize_str(&encode(t))
 }

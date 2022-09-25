@@ -1,7 +1,7 @@
 use crate::{
     arena::{ARENA, CONSUMEDTICKETS, TICKETABLE},
     compile,
-    contract_address::ContractAddress,
+    contract_address::{decode, ContractAddress},
     errors::{vm::VmError, VMResult},
     execution_result::ExecutionResult,
     incoming::InvokeManaged,
@@ -123,7 +123,7 @@ fn handle_transaction(
                     transaction.operation_raw_hash,
                     transaction.source,
                 )?;
-                let address = contract_addr_to_string(&addres)?;
+                let address = contract_addr_to_string(&addres);
                 context
                     .io
                     .write_with_fail(&ServerMessage::DepositTickets(TicketDeposit {
@@ -163,7 +163,7 @@ fn handle_originate(
         self_: addr.clone(),
         originated_by,
         storage: bincode::serialize(&initial_storage).expect("error"),
-        module: Some(Box::from(module)),
+        module: Box::from(Some(module)),
         serialized_module: serialized,
         constants: bincode::serialize(&constants).expect("error"),
     };
@@ -184,8 +184,8 @@ fn handle_originate(
         }
     }
 }
-pub fn contract_addr_to_string(c: &ContractAddress) -> VMResult<String> {
-    serde_json::to_string(&c).map_err(|err| VmError::RuntimeErr(err.to_string()))
+pub fn contract_addr_to_string(c: &ContractAddress) -> String {
+    c.0.clone()
 }
 fn handle_invoke(
     context: &mut ExecutionState,
@@ -207,7 +207,7 @@ fn handle_invoke(
                 let constantst: Vec<(i32, Value)> =
                     bincode::deserialize(&contract.constants).expect("error");
                 let invoke_payload = InvokeManaged {
-                    mod_: *(contract.module.clone().unwrap()),
+                    mod_: (*contract.module).clone().unwrap(),
                     arg,
                     initial_storage,
                     constants: constantst,
@@ -216,10 +216,10 @@ fn handle_invoke(
                     sender: transaction
                         .sender
                         .unwrap_or_else(|| transaction.source.clone()),
-                    self_addr: serde_json::to_string(&address).expect("error"),
+                    self_addr: address.0.clone(),
                     gas_limit,
                 };
-                let self_addr = serde_json::to_string(&address).expect("error");
+                let self_addr = address.clone();
                 match invoke_managed(invoke_payload) {
                     Ok(ExecutionResult {
                         new_storage,
@@ -232,7 +232,7 @@ fn handle_invoke(
                             bincode::serialize(&new_storage).expect("serialization_error");
                         {
                             let deposit = unsafe { &mut CONSUMEDTICKETS };
-                            let address = contract_addr_to_string(&address)?;
+                            let address = contract_addr_to_string(&address);
                             context
                                 .io
                                 .write(&ServerMessage::DepositTickets(TicketDeposit {
@@ -290,11 +290,10 @@ fn handle_invoke(
                                             )
                                                 })?;
 
-                                            match serde_json::from_str::<ContractAddress>(&address)
-                                            {
-                                                Ok(contract_address) => {
+                                            match decode(address.as_bytes()) {
+                                                Ok(_) => {
                                                     let operation = Operation::Invoke {
-                                                        address: contract_address,
+                                                        address: self_addr.clone(),
                                                         argument: content,
                                                         gas_limit: remaining_gas,
                                                     };
@@ -309,7 +308,7 @@ fn handle_invoke(
                                                     deposit.clear();
                                                     let transaction = Transaction {
                                                         source: transaction.source.clone(),
-                                                        sender: Some(self_addr),
+                                                        sender: Some(self_addr.0),
                                                         operation,
                                                         operation_raw_hash: transaction
                                                             .operation_raw_hash
@@ -338,7 +337,7 @@ fn handle_invoke(
                                                     })?;
                                                     let transaction = Transaction {
                                                         source: transaction.source.clone(),
-                                                        sender: Some(self_addr),
+                                                        sender: Some(self_addr.0),
                                                         operation,
                                                         operation_raw_hash: transaction
                                                             .operation_raw_hash
