@@ -11,7 +11,7 @@ use crate::{
 #[serde(tag = "type_", content = "content")]
 pub enum Operation {
     Originate {
-        module: String,
+        module_: String,
         constants: Vec<(u32, Value)>,
         initial_storage: Value,
     },

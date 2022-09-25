@@ -113,13 +113,13 @@ fn handle_transaction(
                 Ok(())
             }
             Operation::Originate {
-                module,
+                module_,
                 constants,
                 initial_storage,
             } => {
                 let addres = handle_originate(
                     context,
-                    module,
+                    module_,
                     constants,
                     initial_storage,
                     transaction.operation_raw_hash,
