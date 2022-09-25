@@ -1,5 +1,5 @@
 use crate::{
-    arena::{ARENA, INVERSETICKETS, TICKETS},
+    arena::{ARENA, CONSUMEDTICKETS, INVERSETICKETS, TICKETS},
     ticket_table::Ticket,
 };
 use im_rc::{OrdMap, OrdSet, Vector};
@@ -439,6 +439,7 @@ impl Serialize for Value {
                     },
                     Ok,
                 )?;
+                unsafe { CONSUMEDTICKETS.push((ticket.clone().ticket_id, *b)) }
                 let mut seq = serializer.serialize_tuple(2)?;
                 seq.serialize_element("Ticket")?;
                 seq.serialize_element(&ticket)?;

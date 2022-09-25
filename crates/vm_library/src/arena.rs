@@ -1,17 +1,26 @@
+use fnv::FnvHashMap;
 use im_rc::{ordmap, ordset, vector};
 use slotmap::{DefaultKey, HopSlotMap};
 
-use crate::{managed::value::Value, ticket_table::Ticket};
+use crate::{
+    managed::value::Value,
+    ticket_table::{Ticket, TicketId, TicketTable},
+};
 use once_cell::unsync::Lazy;
 
 pub static mut ARENA: Lazy<HopSlotMap<DefaultKey, Value>> =
     Lazy::new(|| HopSlotMap::with_capacity(4000));
 
 use std::collections::BTreeMap;
-pub static mut PREDEF: Lazy<BTreeMap<String, Value>> = Lazy::new(BTreeMap::new);
+pub static mut PREDEF: Lazy<FnvHashMap<String, Value>> =
+    Lazy::new(|| FnvHashMap::with_capacity_and_hasher(16, Default::default()));
 pub static mut CONSTANTS: Lazy<Vec<Value>> = Lazy::new(|| Vec::with_capacity(3000));
 pub static mut TICKETS: Lazy<BTreeMap<usize, Ticket>> = Lazy::new(BTreeMap::new);
-pub static mut INVERSETICKETS: Lazy<BTreeMap<Ticket, usize>> = Lazy::new(BTreeMap::new);
+pub static mut INVERSETICKETS: Lazy<FnvHashMap<Ticket, usize>> =
+    Lazy::new(|| FnvHashMap::with_capacity_and_hasher(100, Default::default()));
+pub static mut TICKETABLE: Lazy<TicketTable> = Lazy::new(TicketTable::default);
+pub static mut CONSUMEDTICKETS: Lazy<Vec<(TicketId, usize)>> =
+    Lazy::new(|| Vec::with_capacity(3000));
 
 pub fn populate_predef(sender: String, self_: String, source: String) {
     let map = unsafe { &mut PREDEF };

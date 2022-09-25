@@ -1,4 +1,8 @@
-type t [@@deriving yojson]
+type t =
+  { module_ : string
+  ; constants : (int * Values.t) array
+  }
+[@@deriving yojson]
 
 val make :
      string

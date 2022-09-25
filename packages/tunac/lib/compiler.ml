@@ -121,7 +121,8 @@ let rec compile_instruction ~ctx instruction =
   | Prim (_, I_LEFT, _, _) -> "(call $push (call $left (call $pop)))"
   | Prim (_, I_LT, _, _) -> "(call $push (call $lt (call $pop)))"
   | Prim (_, I_MEM, _, _) -> "(call $push (call $mem (call $pop) (call $pop)))"
-  | Prim (_, I_MUL, _, _) -> "(call $push (call $z_mul (call $pop) (call $pop)))"
+  | Prim (_, I_MUL, _, _) ->
+    "(call $push (call $z_mul (call $pop) (call $pop)))"
   | Prim (_, I_NEG, _, _) -> "(call $push (call $neg (call $pop)))"
   | Prim (_, I_NEQ, _, _) -> "(call $push (call $neq (call $pop)))"
   | Prim (_, I_NIL, _, _) -> "(call $push (call $nil))"
@@ -185,7 +186,7 @@ let rec compile_instruction ~ctx instruction =
   | Prim (_, I_CONTRACT, _, _) -> "(call $push (call $contract (call $pop)))"
   | Prim (_, I_IMPLICIT_ACCOUNT, _, _) ->
     "(call $push (call $implicit_account (call $pop)))"
-  | Prim (_, I_LEVEL, _, _) -> "(call $push (call $level))"
+  (* | Prim (_, I_LEVEL, _, _) -> "(call $push (call $level))" *)
   | Prim (_, I_TRANSFER_TOKENS, _, _) ->
     (* 'ty : mutez : contract 'ty : A -> operation : A *)
     "(call $push (call $transfer_tokens (call $pop) (call $pop) (call $pop)))"
@@ -229,15 +230,20 @@ let rec compile_instruction ~ctx instruction =
       lambda name
   | Prim (_, I_BLAKE2B, _, _) -> "(call $push (call $blake2b (call $pop)))"
   | Prim (_, I_CHECK_SIGNATURE, _, _) ->
+    let () = failwith "todo" in
+
     (* key : signature : bytes : A -> bool : A *)
     "(call $push (call $check_signature (call $pop) (call $pop) (call $pop)))"
   | Prim (_, I_HASH_KEY, _, _) ->
+    let () = failwith "todo" in
+
     (* key : A -> key_hash : A *)
     "(call $push (call $hash_key (call $pop)))"
   | Prim (_, I_KECCAK, _, _) ->
     (* bytes : A -> bytes : A *)
     "(call $push (call $keccak (call $pop)))"
   | Prim (_, I_PAIRING_CHECK, _, _) ->
+    let () = failwith "todo" in
     (* list ( pair bls12_381_g1 bls12_381_g2 ) : A -> bool : A *)
     "(call $push (call $pairing_check (call $pop)))"
   | Prim (_, I_SHA256, _, _) ->
@@ -266,6 +272,8 @@ let rec compile_instruction ~ctx instruction =
   | Prim (_, I_JOIN_TICKETS, _, _) ->
     (* pair ( ticket cty ) ( ticket cty ) : A -> option ( ticket cty ) : A *)
     "(call $push (call $join_tickets (call $pop)))"
+  | Prim (_, I_PACK, _, _) -> "(call $push (call $pack (call $pop)))"
+  | Prim (_, I_UNPACK, _, _) -> "(call $push (call $unpack (call $pop)))"
   | Prim (_, prim, _, _) ->
     failwith
       ("Unsupported primitive " ^ Michelson_primitives.string_of_prim prim)

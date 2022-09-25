@@ -8,8 +8,6 @@ pub fn create_incoming_managed(s: String, arg: Value, initial_storage: Value) ->
         &compile_store::new_compile_store(),
         wat2wasm(deser.module_.as_bytes()).unwrap(),
     )
-    .unwrap()
-    .serialize()
     .unwrap();
     InvokeManaged {
         mod_,

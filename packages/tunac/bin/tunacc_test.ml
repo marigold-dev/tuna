@@ -17,7 +17,6 @@ let compile_value code =
   let out = value |> Tunac.Values.yojson_of_t |> Yojson.Safe.pretty_to_string in
   print_endline out
 
-
 let () =
   match Sys.argv.(1) with
   | "contract" -> compile_contract Sys.argv.(2)
