@@ -5,7 +5,6 @@ let read_file name =
   Bytes.to_string @@ Bytes.sub buf 0 size
 
 let compile_contract filename =
-  `Assoc [ ("a", `String "b") ] |> Yojson.Safe.to_string |> print_endline;
   let wat, constants =
     filename |> read_file |> Tunac.Compiler.compile |> Result.get_ok
   in

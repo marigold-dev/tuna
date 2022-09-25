@@ -1,7 +1,7 @@
-use std::ops::{Add, Sub};
+use std::ops::{Add, BitOr, BitXor, Mul, Neg, Shl, Sub};
 
 use im_rc::{OrdSet, Vector};
-use rug::Integer;
+use rug::{ops::DivRounding, Integer};
 use slotmap::{DefaultKey, Key, KeyData};
 use wasmer::{Exports, Function, ImportObject, Store};
 
@@ -31,7 +31,25 @@ pub fn equal(env: &Context, value1: Value, value2: Value) -> VMResult<i64> {
 pub fn or(env: &Context, value1: Value, value2: Value) -> VMResult<i64> {
     env.update_gas(300)?;
     let res: VMResult<Value> = match (value1, value2) {
+        (Value::Bool(x), Value::Bool(y)) => Ok(Value::Bool(x || y)),
+        (Value::Int(x), Value::Int(y)) => Ok(Value::Int(x.bitor(y))),
+
+        (x, _) => Err(FFIError::ExternError {
+            value: x,
+            msg: "type mismatch, expected Two Bools".to_owned(),
+        }
+        .into()),
+    };
+    let res = res?;
+    let bumped = env.bump(res);
+    conversions::to_i64(bumped)
+}
+pub fn xor(env: &Context, value1: Value, value2: Value) -> VMResult<i64> {
+    env.update_gas(300)?;
+    let res: VMResult<Value> = match (value1, value2) {
         (Value::Bool(x), Value::Bool(y)) => Ok(Value::Bool(x | y)),
+        (Value::Int(x), Value::Int(y)) => Ok(Value::Int(x.bitxor(y))),
+
         (x, _) => Err(FFIError::ExternError {
             value: x,
             msg: "type mismatch, expected Two Bools".to_owned(),
@@ -75,6 +93,7 @@ pub fn neq(env: &Context, value: Value) -> VMResult<i64> {
     let bumped = env.bump(res);
     conversions::to_i64(bumped)
 }
+
 pub fn eq(env: &Context, value: Value) -> VMResult<i64> {
     env.update_gas(300)?;
     let one: rug::Integer = rug::Integer::from(1);
@@ -199,6 +218,99 @@ pub fn z_sub(env: &Context, value1: Value, value2: Value) -> VMResult<i64> {
         .into()),
     }
 }
+pub fn ediv(env: &Context, value1: Value, value2: Value) -> VMResult<i64> {
+    env.update_gas(300)?;
+    match (value1, value2) {
+        (Value::Int(x), Value::Int(y)) => {
+            if y == Integer::ZERO {
+                let res = Value::Option(None);
+                let key = env.bump(res);
+                conversions::to_i64(key)
+            } else {
+                let (quot, rem) = (x).div_rem_euc(y);
+                let fst = Value::Int(quot);
+                let snd = Value::Int(rem);
+                let fst = env.bump_raw(fst);
+                let snd = env.bump_raw(snd);
+                let pair = Value::Pair { fst, snd };
+                let pair = env.bump_raw(pair);
+                let key = env.bump(Value::Option(Some(pair)));
+                conversions::to_i64(key)
+            }
+        }
+        (Value::Int(_), err) | (err, Value::Int(_)) => Err(FFIError::ExternError {
+            value: (err),
+            msg: "type mismatch, expected Int".to_owned(),
+        }
+        .into()),
+        (x, _) => Err(FFIError::ExternError {
+            value: x,
+            msg: "type mismatch, expected Int".to_owned(),
+        }
+        .into()),
+    }
+}
+pub fn z_mul(env: &Context, value1: Value, value2: Value) -> VMResult<i64> {
+    env.update_gas(300)?;
+    match (value1, value2) {
+        (Value::Int(x), Value::Int(y)) => {
+            let res = Value::Int((x).mul(y));
+            let key = env.bump(res);
+            conversions::to_i64(key)
+        }
+        (Value::Int(_), err) | (err, Value::Int(_)) => Err(FFIError::ExternError {
+            value: (err),
+            msg: "type mismatch, expected Int".to_owned(),
+        }
+        .into()),
+        (x, _) => Err(FFIError::ExternError {
+            value: x,
+            msg: "type mismatch, expected Int".to_owned(),
+        }
+        .into()),
+    }
+}
+pub fn lsl(env: &Context, value1: Value, value2: Value) -> VMResult<i64> {
+    env.update_gas(300)?;
+    match (value1, value2) {
+        (Value::Int(x), Value::Int(y)) => {
+            let res = Value::Int((x) << (y.to_i32_wrapping()));
+            let key = env.bump(res);
+            conversions::to_i64(key)
+        }
+        (Value::Int(_), err) | (err, Value::Int(_)) => Err(FFIError::ExternError {
+            value: (err),
+            msg: "type mismatch, expected Int".to_owned(),
+        }
+        .into()),
+        (x, _) => Err(FFIError::ExternError {
+            value: x,
+            msg: "type mismatch, expected Int".to_owned(),
+        }
+        .into()),
+    }
+}
+pub fn lsr(env: &Context, value1: Value, value2: Value) -> VMResult<i64> {
+    env.update_gas(300)?;
+    match (value1, value2) {
+        (Value::Int(x), Value::Int(y)) => {
+            let res = Value::Int((x) >> (y.to_i32_wrapping()));
+            let key = env.bump(res);
+            conversions::to_i64(key)
+        }
+        (Value::Int(_), err) | (err, Value::Int(_)) => Err(FFIError::ExternError {
+            value: (err),
+            msg: "type mismatch, expected Int".to_owned(),
+        }
+        .into()),
+        (x, _) => Err(FFIError::ExternError {
+            value: x,
+            msg: "type mismatch, expected Int".to_owned(),
+        }
+        .into()),
+    }
+}
+
 pub fn is_left(env: &Context, value: Value) -> VMResult<i32> {
     env.update_gas(300)?;
     match value {
@@ -335,6 +447,184 @@ pub fn abs(env: &Context, value: Value) -> VMResult<i64> {
         .into()),
     }
 }
+pub fn neg(env: &Context, value: Value) -> VMResult<i64> {
+    env.update_gas(300)?;
+    match value {
+        Value::Int(x) => {
+            let opt = Value::Int(x.neg());
+            let bumped = env.bump(opt);
+            let key = conversions::to_i64(bumped)?;
+            Ok(key)
+        }
+        _ => Err(FFIError::ExternError {
+            value: (value).clone(),
+            msg: "type mismatch, expected Nat".to_owned(),
+        }
+        .into()),
+    }
+}
+use blake2::digest::consts::U32;
+use blake2::Digest;
+pub type Blake2b256 = blake2::Blake2b<U32>;
+
+fn blake2b(env: &Context, value: Value) -> VMResult<i64> {
+    env.update_gas(300)?;
+    match value {
+        Value::Bytes(x) => {
+            let opt = Value::Bytes(Blake2b256::digest(x).to_vec());
+            let bumped = env.bump(opt);
+            let key = conversions::to_i64(bumped)?;
+            Ok(key)
+        }
+        _ => Err(FFIError::ExternError {
+            value: (value).clone(),
+            msg: "type mismatch, expected Nat".to_owned(),
+        }
+        .into()),
+    }
+}
+fn unpack(env: &Context, value: Value) -> VMResult<i64> {
+    env.update_gas(300)?;
+    match &value {
+        Value::Bytes(x) => {
+            let opt: VMResult<Value> = bincode::deserialize(x).map_err(|_| {
+                FFIError::ExternError {
+                    value: (value).clone(),
+                    msg: "failed to unpack".to_owned(),
+                }
+                .into()
+            });
+            let opt = opt?;
+            let bumped = env.bump(opt);
+            let key = conversions::to_i64(bumped)?;
+            Ok(key)
+        }
+        _ => Err(FFIError::ExternError {
+            value: (value).clone(),
+            msg: "unpack type mismatch, expected Bytes".to_owned(),
+        }
+        .into()),
+    }
+}
+fn pack(env: &Context, value: Value) -> VMResult<i64> {
+    env.update_gas(300)?;
+
+    let opt: VMResult<Vec<u8>> = bincode::serialize(&value).map_err(|_| {
+        FFIError::ExternError {
+            value: (value).clone(),
+            msg: "failed to unpack".to_owned(),
+        }
+        .into()
+    });
+    let opt = opt?;
+    let bumped = env.bump(Value::Bytes(opt));
+    let key = conversions::to_i64(bumped)?;
+    Ok(key)
+}
+fn sha3(env: &Context, value: Value) -> VMResult<i64> {
+    env.update_gas(300)?;
+    match value {
+        Value::Bytes(x) => {
+            let opt = Value::Bytes(sha3::Sha3_256::digest(x).to_vec());
+            let bumped = env.bump(opt);
+            let key = conversions::to_i64(bumped)?;
+            Ok(key)
+        }
+        _ => Err(FFIError::ExternError {
+            value: (value).clone(),
+            msg: "type mismatch, expected Nat".to_owned(),
+        }
+        .into()),
+    }
+}
+fn sha256(env: &Context, value: Value) -> VMResult<i64> {
+    env.update_gas(300)?;
+    match value {
+        Value::Bytes(x) => {
+            let opt = Value::Bytes(<sha2::Sha256 as sha2::Digest>::digest(&x).to_vec());
+            let bumped = env.bump(opt);
+            let key = conversions::to_i64(bumped)?;
+            Ok(key)
+        }
+        _ => Err(FFIError::ExternError {
+            value: (value).clone(),
+            msg: "type mismatch, expected Nat".to_owned(),
+        }
+        .into()),
+    }
+}
+fn sha512(env: &Context, value: Value) -> VMResult<i64> {
+    env.update_gas(300)?;
+    match value {
+        Value::Bytes(x) => {
+            let opt = Value::Bytes(<sha2::Sha512 as sha2::Digest>::digest(&x).to_vec());
+            let bumped = env.bump(opt);
+            let key = conversions::to_i64(bumped)?;
+            Ok(key)
+        }
+        _ => Err(FFIError::ExternError {
+            value: (value).clone(),
+            msg: "type mismatch, expected Nat".to_owned(),
+        }
+        .into()),
+    }
+}
+fn keccak(env: &Context, value: Value) -> VMResult<i64> {
+    env.update_gas(300)?;
+    match value {
+        Value::Bytes(x) => {
+            let opt = Value::Bytes(sha3::Keccak256::digest(x).to_vec());
+            let bumped = env.bump(opt);
+            let key = conversions::to_i64(bumped)?;
+            Ok(key)
+        }
+        _ => Err(FFIError::ExternError {
+            value: (value).clone(),
+            msg: "type mismatch, expected Nat".to_owned(),
+        }
+        .into()),
+    }
+}
+pub fn size(env: &Context, value: Value) -> VMResult<i64> {
+    env.update_gas(300)?;
+    match value {
+        Value::Map(x) => {
+            let opt = Value::Int(x.len().into());
+            let bumped = env.bump(opt);
+            let key = conversions::to_i64(bumped)?;
+            Ok(key)
+        }
+        Value::List(x) => {
+            let opt = Value::Int(x.len().into());
+            let bumped = env.bump(opt);
+            let key = conversions::to_i64(bumped)?;
+            Ok(key)
+        }
+        Value::Set(x) => {
+            let opt = Value::Int(x.len().into());
+            let bumped = env.bump(opt);
+            let key = conversions::to_i64(bumped)?;
+            Ok(key)
+        }
+        Value::Bytes(x) => {
+            let opt = Value::Int(x.len().into());
+            let bumped = env.bump(opt);
+            let key = conversions::to_i64(bumped)?;
+            Ok(key)
+        }
+        Value::String(x) => {
+            let opt = Value::Int(x.len().into());
+            let bumped = env.bump(opt);
+            let key = conversions::to_i64(bumped)?;
+            Ok(key)
+        }
+        _ => Err(FFIError::ExternError {
+            value: (value).clone(),
+            msg: "type mismatch, expected Nat".to_owned(),
+        }
+        .into()),
+    }
+}
 pub fn lt(env: &Context, value1: Value) -> VMResult<i64> {
     env.update_gas(300)?;
     let cmp_res = (value1).lt(&Value::Int(Integer::ZERO)) as bool;
@@ -344,6 +634,18 @@ pub fn lt(env: &Context, value1: Value) -> VMResult<i64> {
 pub fn gt(env: &Context, value1: Value) -> VMResult<i64> {
     env.update_gas(300)?;
     let cmp_res = (value1).gt(&Value::Int(Integer::ZERO));
+    let bumped = env.bump(Value::Bool(cmp_res));
+    conversions::to_i64(bumped)
+}
+pub fn le(env: &Context, value1: Value) -> VMResult<i64> {
+    env.update_gas(300)?;
+    let cmp_res = (value1).le(&Value::Int(Integer::ZERO)) as bool;
+    let bumped = env.bump(Value::Bool(cmp_res));
+    conversions::to_i64(bumped)
+}
+pub fn ge(env: &Context, value1: Value) -> VMResult<i64> {
+    env.update_gas(300)?;
+    let cmp_res = (value1).ge(&Value::Int(Integer::ZERO));
     let bumped = env.bump(Value::Bool(cmp_res));
     conversions::to_i64(bumped)
 }
@@ -473,6 +775,19 @@ pub fn update(env: &Context, key: Value, value: Value, map: Value) -> VMResult<i
                 }
             }
             let bumped = env.bump(Value::Map(map));
+            conversions::to_i64(bumped)
+        }
+        (Value::Set(x), Value::Bool(cond)) => {
+            let mut x = x.clone();
+            match cond {
+                false => {
+                    x.remove(&key);
+                }
+                true => {
+                    x.insert(key);
+                }
+            }
+            let bumped = env.bump(Value::Set(x));
             conversions::to_i64(bumped)
         }
         _ => Err(FFIError::ExternError {
@@ -614,8 +929,48 @@ pub fn make_imports(env: &Context, store: &Store) -> ImportObject {
         Function::new_native_with_env(store, env.clone(), call1(lt)),
     );
     exports.insert(
+        "blake2b",
+        Function::new_native_with_env(store, env.clone(), call1(blake2b)),
+    );
+    exports.insert(
+        "pack",
+        Function::new_native_with_env(store, env.clone(), call1(pack)),
+    );
+    exports.insert(
+        "unpack",
+        Function::new_native_with_env(store, env.clone(), call1(unpack)),
+    );
+    exports.insert(
+        "sha3",
+        Function::new_native_with_env(store, env.clone(), call1(sha3)),
+    );
+    exports.insert(
+        "sha256",
+        Function::new_native_with_env(store, env.clone(), call1(sha256)),
+    );
+    exports.insert(
+        "sha512",
+        Function::new_native_with_env(store, env.clone(), call1(sha512)),
+    );
+    exports.insert(
+        "keccak",
+        Function::new_native_with_env(store, env.clone(), call1(keccak)),
+    );
+    exports.insert(
+        "lt",
+        Function::new_native_with_env(store, env.clone(), call1(lt)),
+    );
+    exports.insert(
         "gt",
         Function::new_native_with_env(store, env.clone(), call1(gt)),
+    );
+    exports.insert(
+        "le",
+        Function::new_native_with_env(store, env.clone(), call1(le)),
+    );
+    exports.insert(
+        "ge",
+        Function::new_native_with_env(store, env.clone(), call1(ge)),
     );
     exports.insert(
         "closure",
@@ -624,6 +979,10 @@ pub fn make_imports(env: &Context, store: &Store) -> ImportObject {
     exports.insert(
         "neq",
         Function::new_native_with_env(store, env.clone(), call1(neq)),
+    );
+    exports.insert(
+        "neg",
+        Function::new_native_with_env(store, env.clone(), call1(neg)),
     );
     exports.insert(
         "eq",
@@ -650,12 +1009,36 @@ pub fn make_imports(env: &Context, store: &Store) -> ImportObject {
         Function::new_native_with_env(store, env.clone(), call1(cdr)),
     );
     exports.insert(
+        "size",
+        Function::new_native_with_env(store, env.clone(), call1(size)),
+    );
+    exports.insert(
         "z_add",
         Function::new_native_with_env(store, env.clone(), call2(z_add)),
     );
     exports.insert(
+        "z_mul",
+        Function::new_native_with_env(store, env.clone(), call2(z_mul)),
+    );
+    exports.insert(
+        "lsl",
+        Function::new_native_with_env(store, env.clone(), call2(lsl)),
+    );
+    exports.insert(
+        "lsr",
+        Function::new_native_with_env(store, env.clone(), call2(lsr)),
+    );
+    exports.insert(
+        "xor",
+        Function::new_native_with_env(store, env.clone(), call2(xor)),
+    );
+    exports.insert(
         "z_sub",
         Function::new_native_with_env(store, env.clone(), call2(z_sub)),
+    );
+    exports.insert(
+        "ediv",
+        Function::new_native_with_env(store, env.clone(), call2(ediv)),
     );
     exports.insert(
         "if_left",
@@ -684,6 +1067,14 @@ pub fn make_imports(env: &Context, store: &Store) -> ImportObject {
     exports.insert(
         "abs",
         Function::new_native_with_env(store, env.clone(), call1(abs)),
+    );
+    exports.insert(
+        "int",
+        Function::new_native_with_env(store, env.clone(), int),
+    );
+    exports.insert(
+        "implicit_account",
+        Function::new_native_with_env(store, env.clone(), address),
     );
     exports.insert(
         "some",
@@ -738,6 +1129,10 @@ pub fn make_imports(env: &Context, store: &Store) -> ImportObject {
         Function::new_native_with_env(store, env.clone(), empty_map),
     );
     exports.insert(
+        "empty_big_map",
+        Function::new_native_with_env(store, env.clone(), empty_map),
+    );
+    exports.insert(
         "cons",
         Function::new_native_with_env(store, env.clone(), call2(cons)),
     );
@@ -770,6 +1165,18 @@ pub fn make_imports(env: &Context, store: &Store) -> ImportObject {
         Function::new_native_with_env(store, env.clone(), self_),
     );
     exports.insert(
+        "balance",
+        Function::new_native_with_env(store, env.clone(), zero),
+    );
+    exports.insert(
+        "amount",
+        Function::new_native_with_env(store, env.clone(), zero),
+    );
+    exports.insert(
+        "self_address",
+        Function::new_native_with_env(store, env.clone(), self_),
+    );
+    exports.insert(
         "iter",
         Function::new_native_with_env(store, env.clone(), call2_mapping(iter)),
     );
@@ -777,7 +1184,10 @@ pub fn make_imports(env: &Context, store: &Store) -> ImportObject {
         "address",
         Function::new_native_with_env(store, env.clone(), address),
     );
-
+    exports.insert(
+        "contract",
+        Function::new_native_with_env(store, env.clone(), contract),
+    );
     exports.insert(
         "dup_host",
         Function::new_native_with_env(store, env.clone(), dup_host),
@@ -825,7 +1235,7 @@ fn ticket(env: &Context, payload: Value, amount: Value) -> VMResult<i64> {
                 let handle = env.with_table(|table| {
                     let string = String::from_utf8_lossy(&x);
                     let handle =
-                        table.mint_ticket(nil.clone(), y.to_u32_wrapping(), string.to_string());
+                        table.mint_ticket(nil.clone(), y.to_usize_wrapping(), string.to_string());
                     Ok(Value::Ticket(handle))
                 })?;
                 Ok(env.bump(handle) as i64)
@@ -874,7 +1284,7 @@ fn split_ticket(env: &Context, payload: Value, nat: Value) -> VMResult<i64> {
             (Value::Int(x1), Value::Int(x2)) => {
                 let handle = env.with_table(|table| {
                     table
-                        .split_ticket(&x, (x1.to_u32_wrapping(), x2.to_u32_wrapping()))
+                        .split_ticket(&x, (x1.to_usize_wrapping(), x2.to_usize_wrapping()))
                         .map_err(std::convert::Into::into)
                 });
                 handle.map_or_else(
@@ -1070,6 +1480,25 @@ fn map(env: &Context, v: Value, idx: i32) -> VMResult<i64> {
             let bumped = env.bump(Value::Set(val));
             Ok(bumped as i64)
         }
+        Value::Map(x) => {
+            let new: VMResult<OrdSet<Value>> = x
+                .iter()
+                .map(|(k, v)| {
+                    let k = k.clone();
+                    let v = v.clone();
+
+                    let k = env.bump_raw(k);
+                    let v = env.bump_raw(v);
+                    let pair = Value::Pair { fst: k, snd: v };
+                    let bumped = env.bump(pair);
+                    let res = env.call(bumped as i64, idx)?;
+                    env.get(DefaultKey::from(KeyData::from_ffi(res as u64)))
+                })
+                .collect();
+            let val = new?;
+            let bumped = env.bump(Value::Set(val));
+            Ok(bumped as i64)
+        }
         _ => Err(FFIError::ExternError {
             value: v.clone(),
             msg: "type mismatch, expected Map with a Option Value".to_owned(),
@@ -1145,6 +1574,16 @@ fn iter(env: &Context, v: Value, idx: i32) -> VMResult<()> {
             let bumped = env.bump(reff);
             env.call_unit(bumped as i64, idx)
         }),
+        Value::Map(x) => x.iter().try_for_each(|(k, v)| {
+            let k = k.clone();
+            let v = v.clone();
+
+            let k = env.bump_raw(k);
+            let v = env.bump_raw(v);
+            let pair = Value::Pair { fst: k, snd: v };
+            let bumped = env.bump(pair);
+            env.call_unit(bumped as i64, idx)
+        }),
         _ => Err(FFIError::ExternError {
             value: v.clone(),
             msg: "type mismatch, expected Map with a Option Value".to_owned(),
@@ -1163,10 +1602,24 @@ fn dup_host(c: &Context, v: i64) -> VMResult<()> {
 }
 fn address(c: &Context, v: i64) -> VMResult<i64> {
     let v = DefaultKey::from(KeyData::from_ffi(v as u64));
-    let v = c.get_ref(v)?;
-    let cloned = v.clone();
+    let v = c.get(v)?;
 
-    let bumped = c.bump(cloned);
+    let bumped = c.bump(v);
+    let conved = conversions::to_i64(bumped)?;
+    Ok(conved)
+}
+fn int(_c: &Context, v: i64) -> VMResult<i64> {
+    Ok(v)
+}
+
+fn contract(c: &Context, v: i64) -> VMResult<i64> {
+    let v = DefaultKey::from(KeyData::from_ffi(v as u64));
+    let v = c.get(v)?;
+
+    let bumped = c.bump_raw(v);
+    let opt = Value::Option(Some(bumped));
+    let bumped = c.bump(opt);
+
     let conved = conversions::to_i64(bumped)?;
     Ok(conved)
 }

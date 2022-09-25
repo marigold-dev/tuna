@@ -22,13 +22,12 @@ let import_list =
   ; func ref_ref__ref "z_sub"
   ; func ref_ref__ref "z_mul"
   ; func ref__ref "neg"
-  ; func ref__ref "lsl"
-  ; func ref__ref "lsr"
+  ; func ref_ref__ref "lsl"
+  ; func ref_ref__ref "lsr"
   ; func ref_ref__ref "compare"
   ; func ref__ref "car"
   ; func ref__ref "cdr"
-  ; func ref__ref "some"
-  ; func const "now"
+  ; func ref__ref "some" (* ; func const "now" *)
   ; func const "nil"
   ; func const "none"
   ; func const "unit"
@@ -77,8 +76,7 @@ let import_list =
   ; func ref__ref "join_tickets"
   ; func ref_ref__ref "split_ticket"
   ; func const "amount"
-  ; func const "balance"
-  ; func const "level"
+  ; func const "balance" (* ; func const "level" *)
   ; func ref_ref__ref "ediv"
   ; func ref__ref "ge"
   ; func ref__ref "le"
@@ -86,10 +84,11 @@ let import_list =
   ; func ref__ref "int"
   ; func ref__ref "implicit_account"
   ; func ref__ref "blake2b"
-  ; func ref_ref_ref__ref "check_signature"
-  ; func ref__ref "hash_key"
-  ; func ref__ref "keccak"
-  ; func ref__ref "pairing_check"
+  ; func ref__ref "pack"
+  ; func ref__ref "unpack"
+    (* ; func ref_ref_ref__ref "check_signature" *)
+    (* ; func ref__ref "hash_key" *)
+  ; func ref__ref "keccak" (* ; func ref__ref "pairing_check" *)
   ; func ref__ref "sha256"
   ; func ref__ref "sha3"
   ; func ref__ref "sha512"

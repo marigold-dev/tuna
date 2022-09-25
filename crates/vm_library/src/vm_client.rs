@@ -1,4 +1,4 @@
-use serde::{de::Visitor, Deserialize};
+use serde::{de::Visitor, ser::SerializeTuple, Deserialize, Serialize};
 
 use crate::{
     contract_address::ContractAddress,
@@ -7,7 +7,7 @@ use crate::{
     ticket_table::TicketId,
 };
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Serialize, Debug)]
 #[serde(tag = "type_", content = "content")]
 pub enum Operation {
     Originate {
@@ -21,25 +21,32 @@ pub enum Operation {
         #[serde(default = "def")]
         gas_limit: u64,
     },
+    Transfer {
+        address: String,
+        tickets: Vec<(TicketId, usize)>,
+    },
 }
 fn def() -> u64 {
     u64::MAX
 }
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct Transaction {
     pub source: String,
+    #[serde(default)]
+    pub sender: Option<String>,
     pub operation: String,
     pub operation_raw_hash: String,
-    pub tickets: Vec<(TicketId, u32)>,
+    pub tickets: Vec<(TicketId, usize)>,
 }
 #[derive(Debug)]
 pub enum ClientMessage {
     Transaction(Transaction),
+    NoopTransaction,
     Set(SetOwned),
     GetInitialState,
     SetInitialState(Init),
     Get(ContractAddress),
-    GiveTickets(Vec<(TicketId, u32)>),
+    GiveTickets(Vec<(TicketId, usize)>),
 }
 struct ClientVisitor;
 impl<'de> Visitor<'de> for ClientVisitor {
@@ -72,7 +79,7 @@ impl<'de> Visitor<'de> for ClientVisitor {
                     )
                 }
                 "Give_Tickets" => {
-                    let elem: Option<Vec<(TicketId, u32)>> = seq.next_element()?;
+                    let elem: Option<Vec<(TicketId, usize)>> = seq.next_element()?;
                     elem.map_or_else(
                         || {
                             Err(serde::de::Error::invalid_type(
@@ -84,6 +91,7 @@ impl<'de> Visitor<'de> for ClientVisitor {
                     )
                 }
                 "Get_Initial_State" => Ok(ClientMessage::GetInitialState),
+                "Noop_transaction" => Ok(ClientMessage::NoopTransaction),
                 "Transaction" => {
                     let elem: Option<Transaction> = seq.next_element()?;
                     elem.map_or_else(
@@ -134,5 +142,46 @@ impl<'de> Deserialize<'de> for ClientMessage {
         D: serde::Deserializer<'de>,
     {
         deserializer.deserialize_tuple(2, ClientVisitor)
+    }
+}
+impl Serialize for ClientMessage {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        match self {
+            ClientMessage::Set(x) => {
+                let mut seq = serializer.serialize_tuple(2)?;
+                seq.serialize_element("Set")?;
+                seq.serialize_element(x)?;
+                seq.end()
+            }
+            ClientMessage::Get(x) => {
+                let mut seq = serializer.serialize_tuple(2)?;
+                seq.serialize_element("Get")?;
+                seq.serialize_element(x)?;
+                seq.end()
+            }
+            ClientMessage::SetInitialState(s) => {
+                let mut seq = serializer.serialize_tuple(2)?;
+                seq.serialize_element("Set_Initial_State")?;
+                seq.serialize_element(s)?;
+                seq.end()
+            }
+            ClientMessage::GetInitialState => serializer.serialize_str("Get_Iinitial_State"),
+            ClientMessage::GiveTickets(s) => {
+                let mut seq = serializer.serialize_tuple(2)?;
+                seq.serialize_element("Give_tickets")?;
+                seq.serialize_element(s)?;
+                seq.end()
+            }
+            ClientMessage::Transaction(s) => {
+                let mut seq = serializer.serialize_tuple(2)?;
+                seq.serialize_element("Transatcion")?;
+                seq.serialize_element(s)?;
+                seq.end()
+            }
+            ClientMessage::NoopTransaction => serializer.serialize_str("Noop_transaction"),
+        }
     }
 }

@@ -31,7 +31,7 @@ pub fn invoke_managed(t: InvokeManaged) -> VMResult<ExecutionResult> {
 
     let instance = Box::from(
         Instance::new(&module, &imports::make_imports(&env, store))
-            .map_err(|_| VmError::RuntimeErr("Failed to create instance".to_owned()))?,
+            .map_err(|err| VmError::RuntimeErr(format!("Failed to create instance {}", err)))?,
     );
 
     {

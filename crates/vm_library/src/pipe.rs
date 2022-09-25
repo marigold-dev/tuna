@@ -34,11 +34,11 @@ impl IO {
         write_path.push_str("_read");
         let writer_path = Path::new(&write_path);
 
-        unistd::mkfifo(writer_path, server_mode).expect("failed to create fifo");
+        unistd::mkfifo(writer_path, server_mode).unwrap_or(());
         let mut read_path = p;
         read_path.push_str("_write");
         let reader_path = Path::new(&read_path);
-        unistd::mkfifo(reader_path, server_mode).expect("failed to create fifo");
+        unistd::mkfifo(reader_path, server_mode).unwrap_or(());
 
         let reader = std::fs::File::open(read_path).expect("pipe doesnt exist");
         let writer = OpenOptions::create(OpenOptions::new().write(true), false)

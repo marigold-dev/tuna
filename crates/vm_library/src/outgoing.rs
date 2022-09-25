@@ -3,12 +3,6 @@ use serde::{Deserialize, Serialize};
 
 use crate::contract_address::ContractAddress;
 
-#[derive(Serialize)]
-pub struct Set<'a> {
-    pub key: &'a ContractAddress,
-    pub value: &'a str,
-}
-
 #[derive(Debug, Deserialize, Serialize)]
 pub struct SetOwned {
     pub key: ContractAddress,
