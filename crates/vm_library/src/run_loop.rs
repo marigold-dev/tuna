@@ -127,7 +127,7 @@ fn handle_transaction(
                     module_,
                     constants,
                     initial_storage,
-                    transaction.operation_raw_hash,
+                    transaction.operation_raw_hash.as_bytes().to_vec(),
                     transaction.source,
                 )?;
                 let address = contract_addr_to_string(&addres);

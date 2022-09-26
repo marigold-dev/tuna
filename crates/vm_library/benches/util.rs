@@ -93,7 +93,7 @@ pub fn originate(operation: Box<serde_json::value::RawValue>) -> impl FnMut(&mut
         source: "test".to_string(),
         sender: Some("test".to_string()),
         operation,
-        operation_raw_hash: "test".as_bytes().to_vec(),
+        operation_raw_hash: "test".to_string(),
         tickets: vec![],
     };
     let msg =
@@ -116,7 +116,7 @@ pub fn invoke(operation: Box<serde_json::value::RawValue>) -> impl FnMut(&mut IO
         source: "test".to_string(),
         sender: Some("test".to_string()),
         operation,
-        operation_raw_hash: "test".as_bytes().to_vec(),
+        operation_raw_hash: "test".to_string(),
         tickets: vec![],
     };
     let msg =
