@@ -25,11 +25,6 @@ fn criterion_benchmark(c: &mut Criterion) {
       }"#.to_owned();
 
     let mut init = util::init("../ex".to_string());
-    // c.bench_with_input(
-    //     BenchmarkId::new("test", "simple module"),
-    //     &input,
-    //     |b, (json, num)| b.iter(|| benchmark(*num, json)),
-    // );
     let mut pref = util::originate(originate);
     let mut pref2 = util::invoke(invoke);
 

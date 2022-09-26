@@ -82,10 +82,10 @@ impl IO {
 
 pub fn init(path: String) -> IO {
     let mut io = IO::new(path);
-    let msg = serde_json::to_vec(&ClientMessage::SetInitialState(Init(FnvHashMap::default())))
+    let msg = serde_json::to_string(&ClientMessage::SetInitialState(Init(FnvHashMap::default())))
         .expect("Failed to write to pipe");
 
-    io.write(&msg);
+    io.write(msg.as_bytes());
     io
 }
 pub fn originate(operation: String) -> impl FnMut(&mut IO) {
@@ -96,9 +96,10 @@ pub fn originate(operation: String) -> impl FnMut(&mut IO) {
         operation_raw_hash: "test".to_string(),
         tickets: vec![],
     };
-    let msg = serde_json::to_vec(&ClientMessage::Transaction(t)).expect("Failed to write to pipe");
+    let msg =
+        serde_json::to_string(&ClientMessage::Transaction(t)).expect("Failed to write to pipe");
     move |io| {
-        io.write(&msg);
+        io.write(msg.as_bytes());
         loop {
             match io.read() {
                 ServerMessage::DepositTickets(_) => continue,
@@ -117,10 +118,11 @@ pub fn invoke(operation: String) -> impl FnMut(&mut IO) {
         operation_raw_hash: "test".to_string(),
         tickets: vec![],
     };
-    let msg = serde_json::to_vec(&ClientMessage::Transaction(t)).expect("Failed to write to pipe");
+    let msg =
+        serde_json::to_string(&ClientMessage::Transaction(t)).expect("Failed to write to pipe");
 
     move |io| {
-        io.write(&msg);
+        io.write(msg.as_bytes());
         loop {
             match io.read() {
                 ServerMessage::DepositTickets(_) => continue,
