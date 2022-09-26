@@ -74,7 +74,7 @@ fn handle_transaction(
 ) -> VMResult<u64> {
     let io = &mut context.io;
     println!("{:?}", transaction.operation);
-    if let Ok(op) = serde_json::from_str(transaction.operation.get()) {
+    if let Ok(op) = serde_json::from_str(&transaction.operation) {
         match op {
             Operation::Invoke {
                 address,
@@ -312,7 +312,7 @@ fn handle_invoke(
                                                     let transaction = Transaction {
                                                         source: transaction.source.clone(),
                                                         sender: Some(self_addr.0),
-                                                        operation: serde_json::value::RawValue::from_string(operation).unwrap(),
+                                                        operation,
                                                         operation_raw_hash: transaction
                                                             .operation_raw_hash
                                                             .clone(),
@@ -341,7 +341,7 @@ fn handle_invoke(
                                                     let transaction = Transaction {
                                                         source: transaction.source.clone(),
                                                         sender: Some(self_addr.0),
-                                                        operation: serde_json::value::RawValue::from_string(operation).unwrap(),
+                                                        operation,
                                                         operation_raw_hash: transaction
                                                             .operation_raw_hash
                                                             .clone(),
