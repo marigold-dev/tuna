@@ -55,8 +55,6 @@ pub fn run_loop(mut io: IO) {
             let msg = context.io.read();
             match msg {
                 ClientMessage::Transaction(transaction) => {
-                    dbg!("received transaction");
-
                     match handle_transaction(&mut context, transaction, false, 0) {
                         Ok(_) => context.io.write(&ServerMessage::Stop),
                         Err(_) => break 'inner,
@@ -160,14 +158,14 @@ fn handle_originate(
     module: String,
     constants: Vec<(u32, Value)>,
     initial_storage: Value,
-    operation_hash: String,
+    operation_hash: Vec<u8>,
     originated_by: String,
 ) -> VMResult<ContractAddress> {
     let module = compile::compile_managed_module(module.as_bytes())?;
     let serialized = module
         .serialize()
         .map_err(|x| VmError::CompileErr(x.to_string()))?;
-    let addr = ContractAddress::new(operation_hash.as_bytes());
+    let addr = ContractAddress::new(&operation_hash);
     let contract_type = ContractType {
         self_: addr.clone(),
         originated_by,

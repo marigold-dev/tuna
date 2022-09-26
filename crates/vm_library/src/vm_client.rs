@@ -35,7 +35,7 @@ pub struct Transaction {
     #[serde(default)]
     pub sender: Option<String>,
     pub operation: Box<serde_json::value::RawValue>,
-    pub operation_raw_hash: String,
+    pub operation_raw_hash: Vec<u8>,
     pub tickets: Vec<(TicketId, usize)>,
 }
 #[derive(Debug)]
