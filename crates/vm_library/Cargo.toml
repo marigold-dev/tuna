@@ -28,6 +28,7 @@ sha2 = "*"
 nix = "*"
 sha3 = "*"
 base64 = "0.13.0"
+log = "*"
 [lib]
 bench = false
 

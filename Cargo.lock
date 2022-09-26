@@ -1448,6 +1448,7 @@ dependencies = [
  "criterion",
  "fnv",
  "im-rc",
+ "log",
  "mimalloc",
  "nix",
  "once_cell",
