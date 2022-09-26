@@ -50,14 +50,14 @@ pub fn run_loop(io: IO) {
                     context.io.write(&ServerMessage::Init(InitVec(vec![])))
                 }
                 ClientMessage::Transaction(transaction) => {
-                    log::debug!("Received transaction {:?}", transaction);
+                    log::info!("Received transaction {:?}", transaction);
                     match handle_transaction(&mut context, transaction, false, 0) {
                         Ok(_) => context.io.write(&ServerMessage::Stop),
                         Err(_) => break 'inner,
                     }
                 }
                 ClientMessage::NoopTransaction => {
-                    log::debug!("Received Noop transaction");
+                    log::info!("Received Noop transaction");
                     context.io.write(&ServerMessage::Stop);
                     break 'inner;
                 }
