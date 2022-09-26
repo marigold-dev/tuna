@@ -169,10 +169,9 @@ fn handle_originate(
         serialized_module: serialized,
         constants: bincode::serialize(&constants).expect("error"),
     };
-    let serialized = bincode::serialize(&contract_type).unwrap();
     let msg = &ServerMessage::Set(SetOwned {
         key: addr.clone(),
-        value: hex::encode(serialized),
+        value: contract_type.clone(),
     });
     context.state.set(addr.clone(), contract_type);
     match context.io.write_with_fail(msg) {
@@ -243,10 +242,9 @@ fn handle_invoke(
                             deposit.clear();
                         };
                         contract.set_storage(serialized_storage);
-                        let serialized = bincode::serialize(&contract).unwrap();
                         let msg = &ServerMessage::Set(SetOwned {
                             key: address.clone(),
-                            value: hex::encode(serialized),
+                            value: contract.clone(),
                         });
                         context.state.set(address.clone(), contract);
                         match context.io.write_with_fail(msg) {

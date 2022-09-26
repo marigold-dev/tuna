@@ -6,7 +6,7 @@ use crate::{
     compile_store,
     contract_address::ContractAddress,
     errors::{vm::VmError, VMResult},
-    outgoing::Init,
+    outgoing::{Init, InitVec, SetOwned},
 };
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct ContractType {
@@ -70,26 +70,22 @@ impl State {
         self.table.clear();
         init.0.iter().try_for_each(|(key, value)| {
             let contract_type: ContractType = bincode::deserialize(
-                &hex::decode(value).map_err(|err| VmError::DeserializeErr(err.to_string()))?,
+                &base64::decode(value).map_err(|err| VmError::DeserializeErr(err.to_string()))?,
             )
             .map_err(|err| VmError::DeserializeErr(err.to_string()))?;
             self.table.insert(key.clone(), contract_type);
             Ok(())
         })
     }
-    pub fn to_init(&self) -> VMResult<Init> {
-        let mut acc = FnvHashMap::with_capacity_and_hasher(self.table.len(), Default::default());
-        self.table
+    pub fn to_init(&self) -> VMResult<InitVec> {
+        let acc = self
+            .table
             .iter()
-            .try_for_each(|(contract_address, contract_type)| {
-                let immediate: ContractType = contract_type.clone();
-                let immediate = hex::encode(
-                    bincode::serialize(&immediate)
-                        .map_err(|err| VmError::DeserializeErr(err.to_string()))?,
-                );
-                acc.insert(contract_address.clone(), immediate);
-                Ok::<(), VmError>(())
-            })?;
-        Ok(Init(acc))
+            .map(|(contract_address, contract_type)| SetOwned {
+                key: contract_address.clone(),
+                value: contract_type.clone(),
+            })
+            .collect();
+        Ok(InitVec(acc))
     }
 }
