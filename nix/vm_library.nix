@@ -19,7 +19,7 @@ rustPlatform.buildRustPackage rec {
     ];
   };
 
-  cargoSha256 = "sha256-IuzgIaiNySnqMBUrTyDvm6ZclQhQ2jPS1LlWi+LonEg=";
+  cargoSha256 = "sha256-uhtMKkme6Q7DKOVoiATkV8zAQNaYYigSR+WqUZFbMBk=";
 
   nativeBuildInputs = [
     m4
