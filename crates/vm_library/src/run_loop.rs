@@ -73,7 +73,7 @@ fn handle_transaction(
     mut gas_limit: u64,
 ) -> VMResult<u64> {
     let io = &mut context.io;
-
+    println!("{:?}", transaction.operation);
     if let Ok(op) = serde_json::from_str(transaction.operation.get()) {
         match op {
             Operation::Invoke {
