@@ -170,10 +170,9 @@ fn handle_originate(
         constants: bincode::serialize(&constants).expect("error"),
     };
     let serialized = bincode::serialize(&contract_type).unwrap();
-    let serialized = &String::from_utf8_lossy(&serialized);
     let msg = &ServerMessage::Set(SetOwned {
         key: addr.clone(),
-        value: hex::encode(serialized.to_string()),
+        value: hex::encode(serialized),
     });
     context.state.set(addr.clone(), contract_type);
     match context.io.write_with_fail(msg) {
@@ -245,10 +244,9 @@ fn handle_invoke(
                         };
                         contract.set_storage(serialized_storage);
                         let serialized = bincode::serialize(&contract).unwrap();
-                        let serialize = &String::from_utf8_lossy(&serialized);
                         let msg = &ServerMessage::Set(SetOwned {
                             key: address.clone(),
-                            value: hex::encode(serialize.to_string()),
+                            value: hex::encode(serialized),
                         });
                         context.state.set(address.clone(), contract);
                         match context.io.write_with_fail(msg) {
