@@ -51,17 +51,17 @@ impl IO {
     }
 
     pub fn read(&mut self) -> ClientMessage {
-        let mut len_bytes = [0u8; std::mem::size_of::<usize>()];
+        let mut len_bytes = [0u8; std::mem::size_of::<i64>()];
         self.reader
             .read_exact(&mut len_bytes)
-            .expect("Bad interop format");
+            .expect("failed to parse client_message size");
         let len = usize::from_ne_bytes(len_bytes);
 
         let mut buf = vec![0; len];
         self.reader
             .read_exact(&mut buf[..])
-            .expect("Bad interop format");
-        serde_json::from_slice(&buf[..]).expect("Bad interop format")
+            .expect("failed to read client_message");
+        serde_json::from_slice(&buf[..]).expect("failed to parse client_message")
     }
     pub fn write(&mut self, msg: &ServerMessage) {
         let msg = serde_json::to_string(msg).expect("Failed to write to pipe");
