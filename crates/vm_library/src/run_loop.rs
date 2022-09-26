@@ -56,7 +56,6 @@ pub fn run_loop(io: IO) {
                     }
                 }
                 ClientMessage::NoopTransaction => {
-                    dbg!("received noop");
                     context.io.write(&ServerMessage::Stop);
                     break 'inner;
                 }
@@ -144,7 +143,9 @@ fn handle_transaction(
         }?;
         Ok::<u64, VmError>(gas_limit)
     } else {
-        io.write(&ServerMessage::Error("bad operation".to_owned()));
+        io.write(&ServerMessage::Error(
+            "bad operation, failed to parse operation".to_owned(),
+        ));
         Err(VmError::DeserializeErr("Bad transaction".to_owned()))
     }
 }
