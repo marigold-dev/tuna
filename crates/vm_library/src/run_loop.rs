@@ -82,7 +82,7 @@ fn handle_transaction(
 ) -> VMResult<u64> {
     let io = &mut context.io;
 
-    if let Ok(op) = serde_json::from_value(transaction.operation.clone()) {
+    if let Ok(op) = serde_json::from_str(transaction.operation.get()) {
         match op {
             Operation::Invoke {
                 address,
@@ -307,7 +307,7 @@ fn handle_invoke(
                                                         gas_limit: remaining_gas,
                                                     };
                                                     let deposit = unsafe { &mut CONSUMEDTICKETS };
-                                                    let operation = serde_json::to_value(
+                                                    let operation = serde_json::to_string(
                                                         &operation,
                                                     )
                                                     .map_err(|err| {
@@ -318,7 +318,7 @@ fn handle_invoke(
                                                     let transaction = Transaction {
                                                         source: transaction.source.clone(),
                                                         sender: Some(self_addr.0),
-                                                        operation,
+                                                        operation: serde_json::value::RawValue::from_string(operation).unwrap(),
                                                         operation_raw_hash: transaction
                                                             .operation_raw_hash
                                                             .clone(),
@@ -338,7 +338,7 @@ fn handle_invoke(
                                                         address,
                                                         tickets: tickets.clone(),
                                                     };
-                                                    let operation = serde_json::to_value(
+                                                    let operation = serde_json::to_string(
                                                         &operation,
                                                     )
                                                     .map_err(|err| {
@@ -347,7 +347,7 @@ fn handle_invoke(
                                                     let transaction = Transaction {
                                                         source: transaction.source.clone(),
                                                         sender: Some(self_addr.0),
-                                                        operation,
+                                                        operation: serde_json::value::RawValue::from_string(operation).unwrap(),
                                                         operation_raw_hash: transaction
                                                             .operation_raw_hash
                                                             .clone(),

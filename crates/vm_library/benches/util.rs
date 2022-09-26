@@ -88,7 +88,7 @@ pub fn init(path: String) -> IO {
     io.write(msg.as_bytes());
     io
 }
-pub fn originate(operation: serde_json::Value) -> impl FnMut(&mut IO) {
+pub fn originate(operation: Box<serde_json::value::RawValue>) -> impl FnMut(&mut IO) {
     let t = Transaction {
         source: "test".to_string(),
         sender: Some("test".to_string()),
@@ -111,7 +111,7 @@ pub fn originate(operation: serde_json::Value) -> impl FnMut(&mut IO) {
         }
     }
 }
-pub fn invoke(operation: serde_json::Value) -> impl FnMut(&mut IO) {
+pub fn invoke(operation: Box<serde_json::value::RawValue>) -> impl FnMut(&mut IO) {
     let t = Transaction {
         source: "test".to_string(),
         sender: Some("test".to_string()),
