@@ -27,6 +27,7 @@ bs58 = "*"
 sha2 = "*"
 nix = "*"
 sha3 = "*"
+hex = "*"
 [lib]
 bench = false
 

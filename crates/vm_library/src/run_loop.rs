@@ -173,7 +173,7 @@ fn handle_originate(
     let serialized = &String::from_utf8_lossy(&serialized);
     let msg = &ServerMessage::Set(SetOwned {
         key: addr.clone(),
-        value: serialized.to_string(),
+        value: hex::encode(serialized.to_string()),
     });
     context.state.set(addr.clone(), contract_type);
     match context.io.write_with_fail(msg) {
@@ -248,7 +248,7 @@ fn handle_invoke(
                         let serialize = &String::from_utf8_lossy(&serialized);
                         let msg = &ServerMessage::Set(SetOwned {
                             key: address.clone(),
-                            value: serialize.to_string(),
+                            value: hex::encode(serialize.to_string()),
                         });
                         context.state.set(address.clone(), contract);
                         match context.io.write_with_fail(msg) {

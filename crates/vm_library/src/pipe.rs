@@ -65,17 +65,18 @@ impl IO {
         serde_json::from_slice(&buf[..]).expect("failed to parse client_message")
     }
     pub fn write(&mut self, msg: &ServerMessage) {
-        let msg = serde_json::to_vec(msg).expect("Failed to write to pipe");
+        let msg = serde_json::to_string(msg).expect("Failed to write to pipe");
         self.writer
             .write_all(&usize::to_ne_bytes(msg.len()))
             .expect("Failed to write to pipe");
         self.writer
-            .write_all(&msg)
+            .write_all(msg.as_bytes())
             .expect("Failed to write to pipe");
         self.writer.flush().expect("Failed to write to pipe")
     }
     pub fn write_with_fail(&mut self, msg: &ServerMessage) -> Result<(), io::Error> {
         let msg = serde_json::to_string(msg).expect("Failed to write to pipe");
+
         self.writer.write_all(&usize::to_ne_bytes(msg.len()))?;
         self.writer.write_all(msg.as_bytes())?;
         self.writer.flush()

@@ -69,7 +69,7 @@ impl State {
     pub fn from_init(&mut self, init: Init) -> VMResult<()> {
         self.table.clear();
         init.0.iter().try_for_each(|(key, value)| {
-            let contract_type: ContractType = bincode::deserialize_from(value.as_bytes())
+            let contract_type: ContractType = serde_json::from_str(value)
                 .map_err(|err| VmError::DeserializeErr(err.to_string()))?;
             self.table.insert(key.clone(), contract_type);
             Ok(())
@@ -81,12 +81,9 @@ impl State {
             .iter()
             .try_for_each(|(contract_address, contract_type)| {
                 let immediate: ContractType = contract_type.clone();
-                let immediate = bincode::serialize(&immediate)
+                let immediate = serde_json::to_string(&immediate)
                     .map_err(|err| VmError::DeserializeErr(err.to_string()))?;
-                acc.insert(
-                    contract_address.clone(),
-                    String::from_utf8_lossy(&immediate).to_string(),
-                );
+                acc.insert(contract_address.clone(), immediate);
                 Ok::<(), VmError>(())
             })?;
         Ok(Init(acc))
