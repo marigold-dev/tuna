@@ -55,9 +55,9 @@ impl IO {
         self.reader
             .read_exact(&mut len_bytes)
             .expect("failed to parse client_message size");
-        let len = usize::from_ne_bytes(len_bytes);
+        let len = i64::from_ne_bytes(len_bytes);
 
-        let mut buf = vec![0; len];
+        let mut buf = vec![0; len as usize];
         self.reader
             .read_exact(&mut buf[..])
             .expect("failed to read client_message");
