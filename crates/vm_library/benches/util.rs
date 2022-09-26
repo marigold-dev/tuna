@@ -92,7 +92,7 @@ pub fn originate(operation: String) -> impl FnMut(&mut IO) {
     let t = Transaction {
         source: "test".to_string(),
         sender: Some("test".to_string()),
-        operation,
+        operation: operation.as_bytes().to_vec(),
         operation_raw_hash: "test".to_string(),
         tickets: vec![],
     };
@@ -114,7 +114,7 @@ pub fn invoke(operation: String) -> impl FnMut(&mut IO) {
     let t = Transaction {
         source: "test".to_string(),
         sender: Some("test".to_string()),
-        operation,
+        operation: operation.as_bytes().to_vec(),
         operation_raw_hash: "test".to_string(),
         tickets: vec![],
     };

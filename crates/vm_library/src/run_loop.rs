@@ -82,7 +82,7 @@ fn handle_transaction(
 ) -> VMResult<u64> {
     let io = &mut context.io;
 
-    if let Ok(op) = serde_json::from_str(&transaction.operation) {
+    if let Ok(op) = serde_json::from_slice(&transaction.operation) {
         match op {
             Operation::Invoke {
                 address,
@@ -307,12 +307,10 @@ fn handle_invoke(
                                                         gas_limit: remaining_gas,
                                                     };
                                                     let deposit = unsafe { &mut CONSUMEDTICKETS };
-                                                    let operation = serde_json::to_string(
-                                                        &operation,
-                                                    )
-                                                    .map_err(|err| {
-                                                        VmError::RuntimeErr(err.to_string())
-                                                    })?;
+                                                    let operation = serde_json::to_vec(&operation)
+                                                        .map_err(|err| {
+                                                            VmError::RuntimeErr(err.to_string())
+                                                        })?;
                                                     let tickets = deposit.clone();
                                                     deposit.clear();
                                                     let transaction = Transaction {
@@ -338,12 +336,10 @@ fn handle_invoke(
                                                         address,
                                                         tickets: tickets.clone(),
                                                     };
-                                                    let operation = serde_json::to_string(
-                                                        &operation,
-                                                    )
-                                                    .map_err(|err| {
-                                                        VmError::RuntimeErr(err.to_string())
-                                                    })?;
+                                                    let operation = serde_json::to_vec(&operation)
+                                                        .map_err(|err| {
+                                                            VmError::RuntimeErr(err.to_string())
+                                                        })?;
                                                     let transaction = Transaction {
                                                         source: transaction.source.clone(),
                                                         sender: Some(self_addr.0),
