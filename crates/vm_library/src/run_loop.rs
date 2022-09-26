@@ -30,7 +30,7 @@ pub fn run_loop(mut io: IO) {
                 break;
             }
             ClientMessage::GetInitialState => io.write(&ServerMessage::Init(InitVec(vec![]))),
-            ClientMessage::NoopTransaction => (),
+            ClientMessage::NoopTransaction => io.write(&ServerMessage::Stop),
             x => panic!("init not supported, {:?}", x),
         }
     }
@@ -60,7 +60,10 @@ pub fn run_loop(mut io: IO) {
                         Err(_) => break 'inner,
                     }
                 }
-                ClientMessage::NoopTransaction => break 'inner,
+                ClientMessage::NoopTransaction => {
+                    context.io.write(&ServerMessage::Stop);
+                    break 'inner;
+                }
                 x => panic!("run_loop not supported, {:?}", x),
             }
             context.to_revert.clear();
@@ -95,14 +98,15 @@ fn handle_transaction(
                         .io
                         .write_with_fail(&ServerMessage::TakeTickets(address.clone()))
                         .map_err(|err| VmError::RuntimeErr(err.to_string()))?;
-
-                    match context.io.read() {
-                        ClientMessage::GiveTickets(ticket) => {
-                            tickets2.extend(ticket.into_iter().map(|(x, y)| Ticket::new(x, y)))
+                    'd: loop {
+                        match context.io.read() {
+                            ClientMessage::GiveTickets(ticket) => {
+                                tickets2.extend(ticket.into_iter().map(|(x, y)| Ticket::new(x, y)));
+                                break 'd;
+                            }
+                            ClientMessage::NoopTransaction => (),
+                            _ => panic!("bad format"),
                         }
-                        ClientMessage::NoopTransaction => (),
-
-                        _ => panic!("bad format"),
                     }
                 };
 
