@@ -7,8 +7,8 @@ use std::{
 use crate::{vm_client::ClientMessage, vm_server::ServerMessage};
 
 pub struct IO {
-    reader: BufReader<File>,
-    writer: BufWriter<File>,
+    reader: File,
+    writer: File,
 }
 
 use nix::sys::stat::Mode;
@@ -42,11 +42,11 @@ impl IO {
         let writer = OpenOptions::create(OpenOptions::new().write(true), false)
             .open(&write_path)
             .expect("failed to create");
-        let reader = BufReader::new(std::fs::File::open(read_path).expect("pipe doesnt exist"));
+        let reader = std::fs::File::open(read_path).expect("pipe doesnt exist");
 
         Self {
             reader,
-            writer: BufWriter::new(writer),
+            writer: writer,
         }
     }
 
