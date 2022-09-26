@@ -14,7 +14,6 @@ use crate::{
 
 pub fn invoke_managed(t: InvokeManaged) -> VMResult<ExecutionResult> {
     let arena = unsafe { &mut ARENA };
-
     let module = t.mod_;
     let env = Context {
         inner: Rc::new(RefCell::new(Inner {
@@ -30,7 +29,7 @@ pub fn invoke_managed(t: InvokeManaged) -> VMResult<ExecutionResult> {
     let store = module.store();
 
     let instance = Box::from(
-        Instance::new(&module, &imports::make_imports(&env, store))
+        Instance::new(module, &imports::make_imports(&env, store))
             .map_err(|err| VmError::RuntimeErr(format!("Failed to create instance {}", err)))?,
     );
 

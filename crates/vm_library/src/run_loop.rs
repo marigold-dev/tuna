@@ -165,7 +165,7 @@ fn handle_originate(
         self_: addr.clone(),
         originated_by,
         storage: bincode::serialize(&initial_storage).expect("error"),
-        module: Box::from(Some(module)),
+        module: Some(Box::from(module)),
         serialized_module: serialized,
         constants: bincode::serialize(&constants).expect("error"),
     };
@@ -207,11 +207,11 @@ fn handle_invoke(
                 let constantst: Vec<(i32, Value)> =
                     bincode::deserialize(&contract.constants).expect("error");
                 let invoke_payload = InvokeManaged {
-                    mod_: (*contract.module).clone().unwrap(),
+                    mod_: (contract.module.as_ref().unwrap()),
                     arg,
                     initial_storage,
                     constants: constantst,
-                    tickets,
+                    tickets: &tickets,
                     source: transaction.source.clone(),
                     sender: transaction
                         .sender

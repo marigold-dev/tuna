@@ -3,6 +3,7 @@ use vm_library::{
     execution_result::ExecutionResult,
     instance::invoke_managed,
     managed::value::{Union, Value},
+    ticket_table::Ticket,
 };
 
 mod common;
@@ -29,7 +30,9 @@ fn get_balance() {
     let arg = Value::Union(Union::Right(bump));
     let bump = arena.insert(arg);
     let arg = Value::Union(Union::Left(bump));
-    let init = common::create_incoming_managed(payload, arg, storage.clone());
+    let (deser, module) = common::deser(payload);
+    let tickets: Vec<Ticket> = vec![];
+    let init = common::create_incoming_managed(&module, &deser, &tickets, arg, storage.clone());
     let ExecutionResult {
         new_storage, ops, ..
     } = invoke_managed(init).unwrap();
@@ -66,7 +69,9 @@ fn get_total_supply() {
     let arg = Value::Union(Union::Right(bump));
     let bump = arena.insert(arg);
     let arg = Value::Union(Union::Left(bump));
-    let init = common::create_incoming_managed(payload, arg, storage.clone());
+    let (deser, module) = common::deser(payload);
+    let tickets: Vec<Ticket> = vec![];
+    let init = common::create_incoming_managed(&module, &deser, &tickets, arg, storage.clone());
     let ExecutionResult {
         new_storage, ops, ..
     } = invoke_managed(init).unwrap();
@@ -108,7 +113,9 @@ fn approve() {
     let arg = Value::Union(Union::Left(bump));
     let bump = arena.insert(arg);
     let arg = Value::Union(Union::Left(bump));
-    let init = common::create_incoming_managed(payload, arg, storage);
+    let (deser, module) = common::deser(payload);
+    let tickets: Vec<Ticket> = vec![];
+    let init = common::create_incoming_managed(&module, &deser, &tickets, arg, storage.clone());
     let ExecutionResult { new_storage, .. } = invoke_managed(init).unwrap();
     assert_eq!(
         serde_json::to_string(&new_storage).unwrap(),
@@ -154,7 +161,9 @@ fn transfer() {
     let arg = serde_json::from_str(r#"["Pair",["String","tz1gvF4cD2dDtqitL3ZTraggSR1Mju2BKFEM"],["Pair",["String","tz2AcXz8WUu51YYdE5Rsnosxd1hkhW9tG7pd"],["Int","5"]]]"#).unwrap();
     let bump = arena.insert(arg);
     let arg = Value::Union(Union::Right(bump));
-    let init = common::create_incoming_managed(payload, arg, storage);
+    let (deser, module) = common::deser(payload);
+    let tickets: Vec<Ticket> = vec![];
+    let init = common::create_incoming_managed(&module, &deser, &tickets, arg, storage.clone());
     let ExecutionResult { new_storage, .. } = invoke_managed(init).unwrap();
     assert_eq!(
         serde_json::to_string(&new_storage).unwrap(),
@@ -175,7 +184,9 @@ fn get_allowance() {
     let arg = Value::Union(Union::Left(bump));
     let bump = arena.insert(arg);
     let arg = Value::Union(Union::Left(bump));
-    let init = common::create_incoming_managed(payload, arg, storage.clone());
+    let (deser, module) = common::deser(payload);
+    let tickets: Vec<Ticket> = vec![];
+    let init = common::create_incoming_managed(&module, &deser, &tickets, arg, storage.clone());
     let ExecutionResult {
         new_storage, ops, ..
     } = invoke_managed(init).unwrap();

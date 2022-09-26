@@ -15,7 +15,7 @@ pub struct ContractType {
     #[serde(with = "serde_bytes")]
     pub storage: Vec<u8>,
     #[serde(skip_deserializing, skip_serializing)]
-    pub module: Box<Option<Module>>,
+    pub module: Option<Box<Module>>,
     #[serde(with = "serde_bytes")]
     pub serialized_module: Vec<u8>,
     #[serde(with = "serde_bytes")]
@@ -26,9 +26,9 @@ impl ContractType {
         self.storage = s
     }
     pub fn init(&mut self) -> VMResult<()> {
-        match *self.module {
+        match self.module {
             None => {
-                self.module = Box::from(Some(unsafe {
+                self.module = Some(Box::from(unsafe {
                     Module::deserialize(&compile_store::new_headless(), &self.serialized_module)
                 }?));
                 Ok::<(), VmError>(())

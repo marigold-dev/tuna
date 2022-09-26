@@ -3,6 +3,7 @@ use vm_library::{
     execution_result::ExecutionResult,
     instance::invoke_managed,
     managed::value::{Union, Value},
+    ticket_table::Ticket,
 };
 
 mod common;
@@ -21,7 +22,9 @@ fn increment() {
     let arg = Value::Union(Union::Right(bump));
     let bump = arena.insert(arg);
     let arg = Value::Union(Union::Left(bump));
-    let init = common::create_incoming_managed(payload, arg, storage);
+    let (deser, module) = common::deser(payload);
+    let tickets: Vec<Ticket> = vec![];
+    let init = common::create_incoming_managed(&module, &deser, &tickets, arg, storage.clone());
     let ExecutionResult { new_storage, .. } = invoke_managed(init).unwrap();
     assert_eq!(new_storage, Value::Int(5.into()))
 }
@@ -39,7 +42,9 @@ fn decrement() {
     let arg = Value::Union(Union::Left(bump));
     let bump = arena.insert(arg);
     let arg = Value::Union(Union::Left(bump));
-    let init = common::create_incoming_managed(payload, arg, storage);
+    let (deser, module) = common::deser(payload);
+    let tickets: Vec<Ticket> = vec![];
+    let init = common::create_incoming_managed(&module, &deser, &tickets, arg, storage.clone());
     let ExecutionResult { new_storage, .. } = invoke_managed(init).unwrap();
     assert_eq!(new_storage, Value::Int(2.into()))
 }
@@ -55,7 +60,9 @@ fn reset() {
     let arena = unsafe { &mut ARENA };
     let bump = arena.insert(arg);
     let arg = Value::Union(Union::Right(bump));
-    let init = common::create_incoming_managed(payload, arg, storage);
+    let (deser, module) = common::deser(payload);
+    let tickets: Vec<Ticket> = vec![];
+    let init = common::create_incoming_managed(&module, &deser, &tickets, arg, storage.clone());
     let ExecutionResult { new_storage, .. } = invoke_managed(init).unwrap();
     assert_eq!(new_storage, Value::Int(0.into()))
 }
