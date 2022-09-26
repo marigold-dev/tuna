@@ -51,11 +51,11 @@ impl IO {
     }
 
     pub fn read(&mut self) -> ClientMessage {
-        let mut len_bytes = [0u8; std::mem::size_of::<i64>()];
+        let mut len_bytes = [0u8; 8];
         self.reader
             .read_exact(&mut len_bytes)
             .expect("failed to parse client_message size");
-        let len = i64::from_ne_bytes(len_bytes);
+        let len = usize::from_ne_bytes(len_bytes);
 
         let mut buf = vec![0; len as usize];
         self.reader
@@ -75,8 +75,16 @@ impl IO {
     }
     pub fn write_with_fail(&mut self, msg: &ServerMessage) -> Result<(), io::Error> {
         let msg = serde_json::to_string(msg).expect("Failed to write to pipe");
-        self.writer.write_all(&usize::to_ne_bytes(msg.len()))?;
+        self.writer.write_all(&i64::to_ne_bytes(msg.len() as i64))?;
         self.writer.write_all(msg.as_bytes())?;
         self.writer.flush()
+    }
+}
+#[cfg(test)]
+mod test {
+    #[test]
+    fn test() {
+        assert_eq!(std::mem::size_of::<i64>(), 8);
+        assert_eq!(std::mem::size_of::<usize>(), 8)
     }
 }
