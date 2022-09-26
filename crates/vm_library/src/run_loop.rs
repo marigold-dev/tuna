@@ -55,12 +55,15 @@ pub fn run_loop(mut io: IO) {
             let msg = context.io.read();
             match msg {
                 ClientMessage::Transaction(transaction) => {
+                    dbg!("received transaction");
+
                     match handle_transaction(&mut context, transaction, false, 0) {
                         Ok(_) => context.io.write(&ServerMessage::Stop),
                         Err(_) => break 'inner,
                     }
                 }
                 ClientMessage::NoopTransaction => {
+                    dbg!("received noop");
                     context.io.write(&ServerMessage::Stop);
                     break 'inner;
                 }
