@@ -56,6 +56,7 @@ pub fn run_loop(io: IO) {
                     }
                 }
                 ClientMessage::NoopTransaction => {
+                    log::debug!("Received Noop transaction");
                     context.io.write(&ServerMessage::Stop);
                     break 'inner;
                 }
