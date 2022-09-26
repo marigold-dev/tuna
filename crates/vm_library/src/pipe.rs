@@ -7,8 +7,8 @@ use std::{
 use crate::{vm_client::ClientMessage, vm_server::ServerMessage};
 
 pub struct IO {
-    reader: File,
-    writer: File,
+    reader: BufReader<File>,
+    writer: BufWriter<File>,
 }
 
 use nix::sys::stat::Mode;
@@ -42,22 +42,23 @@ impl IO {
         let writer = OpenOptions::create(OpenOptions::new().write(true), false)
             .open(&write_path)
             .expect("failed to create");
-        let reader = std::fs::File::open(read_path).expect("pipe doesnt exist");
+        let reader = BufReader::new(std::fs::File::open(read_path).expect("pipe doesnt exist"));
 
         Self {
             reader,
-            writer: writer,
+            writer: BufWriter::new(writer),
         }
     }
 
     pub fn read(&mut self) -> ClientMessage {
-        let mut len_bytes = [0u8; 8];
+        let mut len_bytes = [0u8; std::mem::size_of::<usize>()];
+
         self.reader
             .read_exact(&mut len_bytes)
             .expect("failed to parse client_message size");
         let len = usize::from_ne_bytes(len_bytes);
 
-        let mut buf = vec![0; len as usize];
+        let mut buf = vec![0; len];
         self.reader
             .read_exact(&mut buf[..])
             .expect("failed to read client_message");
@@ -75,7 +76,7 @@ impl IO {
     }
     pub fn write_with_fail(&mut self, msg: &ServerMessage) -> Result<(), io::Error> {
         let msg = serde_json::to_string(msg).expect("Failed to write to pipe");
-        self.writer.write_all(&i64::to_ne_bytes(msg.len() as i64))?;
+        self.writer.write_all(&usize::to_ne_bytes(msg.len()))?;
         self.writer.write_all(msg.as_bytes())?;
         self.writer.flush()
     }
