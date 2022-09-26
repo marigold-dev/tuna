@@ -30,7 +30,7 @@ pub fn run_loop(mut io: IO) {
                 break;
             }
             ClientMessage::GetInitialState => io.write(&ServerMessage::Init(InitVec(vec![]))),
-
+            ClientMessage::NoopTransaction => (),
             x => panic!("init not supported, {:?}", x),
         }
     }
