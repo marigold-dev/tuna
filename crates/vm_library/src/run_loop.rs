@@ -100,6 +100,8 @@ fn handle_transaction(
                         ClientMessage::GiveTickets(ticket) => {
                             tickets2.extend(ticket.into_iter().map(|(x, y)| Ticket::new(x, y)))
                         }
+                        ClientMessage::NoopTransaction => (),
+
                         _ => panic!("bad format"),
                     }
                 };
