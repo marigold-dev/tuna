@@ -25,8 +25,8 @@ fn criterion_benchmark(c: &mut Criterion) {
       }"#.to_owned();
 
     let mut init = util::init("../ex".to_string());
-    let mut pref = util::originate(originate);
-    let mut pref2 = util::invoke(invoke);
+    let mut pref = util::originate(serde_json::to_value(originate).unwrap());
+    let mut pref2 = util::invoke(serde_json::to_value(invoke).unwrap());
 
     c.bench_function("oritinatre", |b| b.iter(|| pref(&mut init)));
     c.bench_function("invoke", |b| b.iter(|| pref2(&mut init)));

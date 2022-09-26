@@ -12,8 +12,8 @@ pub struct IO {
 }
 
 use fnv::FnvHashMap;
-use nix::sys::stat::Mode;
 use nix::unistd;
+use nix::{libc::IP_DROP_MEMBERSHIP, sys::stat::Mode};
 use vm_library::{
     outgoing::{Init, SetOwned},
     vm_client::Transaction,
@@ -88,16 +88,17 @@ pub fn init(path: String) -> IO {
     io.write(msg.as_bytes());
     io
 }
-pub fn originate(operation: String) -> impl FnMut(&mut IO) {
+pub fn originate(operation: serde_json::Value) -> impl FnMut(&mut IO) {
     let t = Transaction {
         source: "test".to_string(),
         sender: Some("test".to_string()),
-        operation: operation.as_bytes().to_vec(),
+        operation,
         operation_raw_hash: "test".to_string(),
         tickets: vec![],
     };
     let msg =
         serde_json::to_string(&ClientMessage::Transaction(t)).expect("Failed to write to pipe");
+    dbg!(&msg);
     move |io| {
         io.write(msg.as_bytes());
         loop {
@@ -110,11 +111,11 @@ pub fn originate(operation: String) -> impl FnMut(&mut IO) {
         }
     }
 }
-pub fn invoke(operation: String) -> impl FnMut(&mut IO) {
+pub fn invoke(operation: serde_json::Value) -> impl FnMut(&mut IO) {
     let t = Transaction {
         source: "test".to_string(),
         sender: Some("test".to_string()),
-        operation: operation.as_bytes().to_vec(),
+        operation,
         operation_raw_hash: "test".to_string(),
         tickets: vec![],
     };
