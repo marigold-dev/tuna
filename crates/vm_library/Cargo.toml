@@ -29,6 +29,7 @@ nix = "*"
 sha3 = "*"
 base64 = "0.13.0"
 log = "*"
+env_logger = "*"
 [lib]
 bench = false
 
