@@ -20,20 +20,9 @@ struct ExecutionState<'a> {
     pub io: IO,
     pub ticket_table: &'a mut TicketTable,
 }
-pub fn run_loop(mut io: IO) {
-    let mut state = State::default();
-    loop {
-        let msg = io.read();
-        match msg {
-            ClientMessage::SetInitialState(x) => {
-                State::from_init(&mut state, x).expect("failed to init_state");
-                break;
-            }
-            ClientMessage::GetInitialState => io.write(&ServerMessage::Init(InitVec(vec![]))),
-            ClientMessage::NoopTransaction => io.write(&ServerMessage::Stop),
-            x => panic!("init not supported, {:?}", x),
-        }
-    }
+pub fn run_loop(io: IO) {
+    let state = State::default();
+
     let to_revert: Vec<(ContractAddress, ContractType)> = Vec::with_capacity(100);
     let mut context = ExecutionState {
         state,
@@ -54,6 +43,12 @@ pub fn run_loop(mut io: IO) {
         'inner: loop {
             let msg = context.io.read();
             match msg {
+                ClientMessage::SetInitialState(x) => {
+                    State::from_init(&mut context.state, x).expect("failed to init_state");
+                }
+                ClientMessage::GetInitialState => {
+                    context.io.write(&ServerMessage::Init(InitVec(vec![])))
+                }
                 ClientMessage::Transaction(transaction) => {
                     match handle_transaction(&mut context, transaction, false, 0) {
                         Ok(_) => context.io.write(&ServerMessage::Stop),
