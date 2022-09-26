@@ -61,7 +61,7 @@ impl IO {
         self.reader
             .read_exact(&mut buf[..])
             .expect("Bad interop format");
-        serde_json::from_slice(&buf[..len]).expect("Bad interop format")
+        serde_json::from_slice(&buf[..]).expect("Bad interop format")
     }
     pub fn write(&mut self, msg: &ServerMessage) {
         let msg = serde_json::to_string(msg).expect("Failed to write to pipe");
