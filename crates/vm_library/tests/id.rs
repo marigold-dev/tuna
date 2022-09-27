@@ -23,3 +23,344 @@ const PAYLOAD: &str = r#"
 }
 "#;
 
+#[test]
+fn buy() {
+    let payload = PAYLOAD.to_string();
+
+    let arena = unsafe { &mut ARENA };
+    let storage: Value = serde_json::from_str(
+        r#"
+    [
+        "Pair",
+        ["Pair",
+            ["Map",
+                [
+                    [
+                        ["Int", "1"],
+                        ["Pair",
+                            ["Pair",
+                                ["String", "tz1gvF4cD2dDtqitL3ZTraggSR1Mju2BKFEM"],
+                                ["String", "tz2AcXz8WUu51YYdE5Rsnosxd1hkhW9tG7pd"]
+                            ],
+                            ["Bytes", "0"]
+                        ]
+                    ]
+                ]
+            ],
+            ["Int", "7"]
+        ],
+        ["Pair",
+            ["Int", "2"],
+            ["Int", "6"]
+        ]
+    ]"#,
+    )
+    .unwrap();
+
+    let desired_storage: Value = serde_json::from_str(
+        r#"
+    [
+        "Pair",
+        ["Pair",
+            ["Map",
+                [
+                    [
+                        ["Int", "1"],
+                        ["Pair",
+                            ["Pair",
+                                ["String", "tz1gvF4cD2dDtqitL3ZTraggSR1Mju2BKFEM"],
+                                ["String", "tz2AcXz8WUu51YYdE5Rsnosxd1hkhW9tG7pd"]
+                            ],
+                            ["Bytes", "0"]
+                        ]
+                    ],
+                    [
+                        ["Int", "2"],
+                        ["Pair",
+                            ["Pair",
+                                ["String", "tz2AcXz8WUu51YYdE5Rsnosxd1hkhW9tG7pd"],
+                                ["String", "tz1gvF4cD2dDtqitL3ZTraggSR1Mju2BKFEM"]
+                            ],
+                            ["Bytes", "1"]
+                        ]
+                    ]
+                ]
+            ],
+            ["Int", "7"]
+        ],
+        ["Pair",
+            ["Int", "3"],
+            ["Int", "6"]
+        ]
+    ]"#,
+    )
+    .unwrap();
+
+    let arg: Value = serde_json::from_str(r#"["Pair", ["Option", ["String", "tz2AcXz8WUu51YYdE5Rsnosxd1hkhW9tG7pd"]], ["Bytes", "1"]]"#).unwrap();
+    let bump = arena.insert(arg);
+    let arg = Value::Union(Union::Left(bump));
+    let bump = arena.insert(arg);
+    let arg = Value::Union(Union::Left(bump));
+    let (deser, module) = common::deser(payload);
+    let tickets: Vec<Ticket> = vec![];
+    let init = common::create_incoming_managed(&module, &deser, &tickets, 7, arg, storage.clone());
+    let ExecutionResult {
+        new_storage,
+        ops: _,
+        ..
+    } = invoke_managed(init).unwrap();
+
+    assert_eq!(
+        serde_json::to_string(&new_storage).unwrap(),
+        serde_json::to_string(&desired_storage).unwrap()
+    );
+}
+
+#[test]
+fn update_owner() {
+    let payload = PAYLOAD.to_string();
+
+    let arena = unsafe { &mut ARENA };
+    let storage: Value = serde_json::from_str(
+        r#"
+    [
+        "Pair",
+        ["Pair",
+            ["Map",
+                [
+                    [
+                        ["Int", "1"],
+                        ["Pair",
+                            ["Pair",
+                                ["String", "tz1gvF4cD2dDtqitL3ZTraggSR1Mju2BKFEM"],
+                                ["String", "tz1gvF4cD2dDtqitL3ZTraggSR1Mju2BKFEM"]
+                            ],
+                            ["Bytes", "0"]
+                        ]
+                    ]
+                ]
+            ],
+            ["Int", "7"]
+        ],
+        ["Pair",
+            ["Int", "2"],
+            ["Int", "6"]
+        ]
+    ]"#,
+    )
+    .unwrap();
+
+    let desired_storage: Value = serde_json::from_str(
+        r#"
+    [
+        "Pair",
+        ["Pair",
+            ["Map",
+                [
+                    [
+                        ["Int", "1"],
+                        ["Pair",
+                            ["Pair",
+                                ["String", "tz1gvF4cD2dDtqitL3ZTraggSR1Mju2BKFEM"],
+                                ["String", "tz2AcXz8WUu51YYdE5Rsnosxd1hkhW9tG7pd"]
+                            ],
+                            ["Bytes", "0"]
+                        ]
+                    ]
+                ]
+            ],
+            ["Int", "7"]
+        ],
+        ["Pair",
+            ["Int", "2"],
+            ["Int", "6"]
+        ]
+    ]"#,
+    )
+    .unwrap();
+
+    let arg: Value = serde_json::from_str(r#"["Pair", ["Int", "1"], ["String", "tz2AcXz8WUu51YYdE5Rsnosxd1hkhW9tG7pd"]]"#).unwrap();
+    let bump = arena.insert(arg);
+    let arg = Value::Union(Union::Right(bump));
+    let bump = arena.insert(arg);
+    let arg = Value::Union(Union::Right(bump));
+    let (deser, module) = common::deser(payload);
+    let tickets: Vec<Ticket> = vec![];
+    let init = common::create_incoming_managed(&module, &deser, &tickets, 0, arg, storage.clone());
+    let ExecutionResult {
+        new_storage,
+        ops: _,
+        ..
+    } = invoke_managed(init).unwrap();
+
+    assert_eq!(
+        serde_json::to_string(&new_storage).unwrap(),
+        serde_json::to_string(&desired_storage).unwrap()
+    );
+}
+
+#[test]
+fn update_details() {
+    let payload = PAYLOAD.to_string();
+
+    let arena = unsafe { &mut ARENA };
+    let storage: Value = serde_json::from_str(
+        r#"
+    [
+        "Pair",
+        ["Pair",
+            ["Map",
+                [
+                    [
+                        ["Int", "1"],
+                        ["Pair",
+                            ["Pair",
+                                ["String", "tz1gvF4cD2dDtqitL3ZTraggSR1Mju2BKFEM"],
+                                ["String", "tz1gvF4cD2dDtqitL3ZTraggSR1Mju2BKFEM"]
+                            ],
+                            ["Bytes", "0"]
+                        ]
+                    ]
+                ]
+            ],
+            ["Int", "7"]
+        ],
+        ["Pair",
+            ["Int", "2"],
+            ["Int", "6"]
+        ]
+    ]"#,
+    )
+    .unwrap();
+
+    let desired_storage: Value = serde_json::from_str(
+        r#"
+    [
+        "Pair",
+        ["Pair",
+            ["Map",
+                [
+                    [
+                        ["Int", "1"],
+                        ["Pair",
+                            ["Pair",
+                                ["String", "tz2AcXz8WUu51YYdE5Rsnosxd1hkhW9tG7pd"],
+                                ["String", "tz1gvF4cD2dDtqitL3ZTraggSR1Mju2BKFEM"]
+                            ],
+                            ["Bytes", "1"]
+                        ]
+                    ]
+                ]
+            ],
+            ["Int", "7"]
+        ],
+        ["Pair",
+            ["Int", "2"],
+            ["Int", "6"]
+        ]
+    ]"#,
+    )
+    .unwrap();
+
+    let arg: Value = serde_json::from_str(r#"["Pair", ["Pair", ["Int", "1"], ["Option", ["String", "tz2AcXz8WUu51YYdE5Rsnosxd1hkhW9tG7pd"]]], ["Option", ["Bytes", "1"]]]"#).unwrap();
+    let bump = arena.insert(arg);
+    let arg = Value::Union(Union::Left(bump));
+    let bump = arena.insert(arg);
+    let arg = Value::Union(Union::Right(bump));
+    let (deser, module) = common::deser(payload);
+    let tickets: Vec<Ticket> = vec![];
+    let init = common::create_incoming_managed(&module, &deser, &tickets, 0, arg, storage.clone());
+    let ExecutionResult {
+        new_storage,
+        ops: _,
+        ..
+    } = invoke_managed(init).unwrap();
+
+    assert_eq!(
+        serde_json::to_string(&new_storage).unwrap(),
+        serde_json::to_string(&desired_storage).unwrap()
+    );
+}
+
+#[test]
+fn skip() {
+    let payload = PAYLOAD.to_string();
+
+    let arena = unsafe { &mut ARENA };
+    let storage: Value = serde_json::from_str(
+        r#"
+    [
+        "Pair",
+        ["Pair",
+            ["Map",
+                [
+                    [
+                        ["Int", "1"],
+                        ["Pair",
+                            ["Pair",
+                                ["String", "tz1gvF4cD2dDtqitL3ZTraggSR1Mju2BKFEM"],
+                                ["String", "tz1gvF4cD2dDtqitL3ZTraggSR1Mju2BKFEM"]
+                            ],
+                            ["Bytes", "0"]
+                        ]
+                    ]
+                ]
+            ],
+            ["Int", "7"]
+        ],
+        ["Pair",
+            ["Int", "2"],
+            ["Int", "6"]
+        ]
+    ]"#,
+    )
+    .unwrap();
+
+    let desired_storage: Value = serde_json::from_str(
+        r#"
+    [
+        "Pair",
+        ["Pair",
+            ["Map",
+                [
+                    [
+                        ["Int", "1"],
+                        ["Pair",
+                            ["Pair",
+                                ["String", "tz1gvF4cD2dDtqitL3ZTraggSR1Mju2BKFEM"],
+                                ["String", "tz1gvF4cD2dDtqitL3ZTraggSR1Mju2BKFEM"]
+                            ],
+                            ["Bytes", "0"]
+                        ]
+                    ]
+                ]
+            ],
+            ["Int", "7"]
+        ],
+        ["Pair",
+            ["Int", "3"],
+            ["Int", "6"]
+        ]
+    ]"#,
+    )
+    .unwrap();
+
+    let arg: Value = serde_json::from_str(r#"["Unit"]"#).unwrap();
+    let bump = arena.insert(arg);
+    let arg = Value::Union(Union::Right(bump));
+    let bump = arena.insert(arg);
+    let arg = Value::Union(Union::Left(bump));
+    let (deser, module) = common::deser(payload);
+    let tickets: Vec<Ticket> = vec![];
+    let init = common::create_incoming_managed(&module, &deser, &tickets, 6, arg, storage.clone());
+    let ExecutionResult {
+        new_storage,
+        ops: _,
+        ..
+    } = invoke_managed(init).unwrap();
+
+    assert_eq!(
+        serde_json::to_string(&new_storage).unwrap(),
+        serde_json::to_string(&desired_storage).unwrap()
+    );
+}
