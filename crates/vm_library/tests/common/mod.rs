@@ -16,6 +16,7 @@ pub fn create_incoming_managed<'a>(
     mode: &'a Module,
     deser: &'a Init,
     tickets: &'a [Ticket],
+    amount: u32,
     arg: Value,
     initial_storage: Value,
     entrypoint_path: &'a Option<Vec<Path>>,
@@ -29,6 +30,7 @@ pub fn create_incoming_managed<'a>(
         entrypoint_path,
         source: "tz1gvF4cD2dDtqitL3ZTraggSR1Mju2BKFEM".to_string(),
         sender: "tz1gvF4cD2dDtqitL3ZTraggSR1Mju2BKFEM".to_string(),
+        amount,
         self_addr: "KT1WiBZHtvv3EczaN628DkNob4cayHzTEDNK".to_string(),
         gas_limit: u64::MAX,
     }

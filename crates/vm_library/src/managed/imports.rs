@@ -892,6 +892,7 @@ pub fn get_and_update(env: &Context, key: Value, value: Value, map: Value) -> VM
         .into()),
     }
 }
+
 pub const fn call1<A, F>(f: F) -> impl Fn(&Context, i64) -> VMResult<A>
 where
     F: Fn(&Context, Value) -> VMResult<A>,
@@ -1188,7 +1189,7 @@ pub fn make_imports(env: &Context, store: &Store) -> ImportObject {
     );
     exports.insert(
         "amount",
-        Function::new_native_with_env(store, env.clone(), zero),
+        Function::new_native_with_env(store, env.clone(), amount),
     );
     exports.insert(
         "empty_set",
@@ -1248,7 +1249,7 @@ pub fn make_imports(env: &Context, store: &Store) -> ImportObject {
     );
     exports.insert(
         "amount",
-        Function::new_native_with_env(store, env.clone(), zero),
+        Function::new_native_with_env(store, env.clone(), amount),
     );
     exports.insert(
         "self_address",
@@ -1476,6 +1477,17 @@ fn empty_set(c: &Context) -> VMResult<i64> {
         .map_or_else(|| Err(VmError::RuntimeErr("cant happen".to_owned())), Ok)?;
     let bumped = c.bump(nil.clone());
     conversions::to_i64(bumped)
+}
+
+fn amount(c: &Context) -> VMResult<i64> {
+    let predef = unsafe { &PREDEF };
+    let nil = predef
+        .get("amount")
+        .map_or_else(|| Err(VmError::RuntimeErr("can't happen".to_owned())), Ok)?;
+    println!("Got {:?}", nil);
+    let bumped = c.bump(nil.clone());
+    conversions::to_i64(bumped)
+
 }
 
 fn zero(c: &Context) -> VMResult<i64> {

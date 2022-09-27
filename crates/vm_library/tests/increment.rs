@@ -25,7 +25,7 @@ fn increment() {
     let arg = Value::Union(Union::Left(bump));
     let (deser, module) = common::deser(payload);
     let tickets: Vec<Ticket> = vec![];
-    let init = common::create_incoming_managed(&module, &deser, &tickets, arg, storage, &None);
+    let init = common::create_incoming_managed(&module, &deser, &tickets, 0, arg, storage.clone(), &None);
     let ExecutionResult { new_storage, .. } = invoke_managed(init).unwrap();
     assert_eq!(new_storage, Value::Int(5.into()))
 }
@@ -45,7 +45,7 @@ fn decrement() {
     let arg = Value::Union(Union::Left(bump));
     let (deser, module) = common::deser(payload);
     let tickets: Vec<Ticket> = vec![];
-    let init = common::create_incoming_managed(&module, &deser, &tickets, arg, storage, &None);
+    let init = common::create_incoming_managed(&module, &deser, &tickets, 0, arg, storage.clone(), &None);
     let ExecutionResult { new_storage, .. } = invoke_managed(init).unwrap();
     assert_eq!(new_storage, Value::Int(2.into()))
 }
@@ -63,7 +63,7 @@ fn reset() {
     let arg = Value::Union(Union::Right(bump));
     let (deser, module) = common::deser(payload);
     let tickets: Vec<Ticket> = vec![];
-    let init = common::create_incoming_managed(&module, &deser, &tickets, arg, storage, &None);
+    let init = common::create_incoming_managed(&module, &deser, &tickets, 0, arg, storage.clone(), &None);
     let ExecutionResult { new_storage, .. } = invoke_managed(init).unwrap();
     assert_eq!(new_storage, Value::Int(0.into()))
 }
@@ -83,7 +83,7 @@ fn decrement_with_path() {
     let (deser, module) = common::deser(payload);
     let tickets: Vec<Ticket> = vec![];
     let path = Some(vec![Path::Left, Path::Left]);
-    let init = common::create_incoming_managed(&module, &deser, &tickets, arg, storage, &path);
+    let init = common::create_incoming_managed(&module, &deser, &tickets, 0, arg, storage, &path);
     let ExecutionResult { new_storage, .. } = invoke_managed(init).unwrap();
     assert_eq!(new_storage, Value::Int(2.into()))
 }
