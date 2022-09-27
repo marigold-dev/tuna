@@ -96,11 +96,10 @@ pub fn neq(env: &Context, value: Value) -> VMResult<i64> {
 
 pub fn eq(env: &Context, value: Value) -> VMResult<i64> {
     env.update_gas(300)?;
-    let one: rug::Integer = rug::Integer::from(1);
 
     let res: VMResult<Value> = match value {
-        Value::Int(n) if n == Integer::ZERO => Ok(false),
-        Value::Int(n) if n == one => Ok(true),
+        Value::Int(n) if n == Integer::ZERO => Ok(true),
+        Value::Int(_) => Ok(false),
 
         _ => Err(FFIError::ExternError {
             value: (value).clone(),
