@@ -1,12 +1,12 @@
-# Tuna 
+# Tuna
 
-This repository has two different projects, [a pluggable VM](./crates/vm_library/) for running WASM contracts on [Deku](https://github.com/marigold-dev) and [a Michelson to WASM compiler](./packages/tunac/) which also has some tools to interact with Deku.
+This repository has two different projects, [a plugable VM](./crates/vm_library/) for running WASM contracts on [Deku](https://github.com/marigold-dev) and [a Michelson to WASM compiler](./packages/tunac/) which also has some tools to interact with Deku.
 
 ## Building
 
 ### Opam
 
-The project don't require anything special in order to build, only a few a system dependecies. You'll need to install [opam](https://opam.ocaml.org/doc/Install.html), libgmp-dev and pkg-config, the names may vary from system to system.
+The project don't require anything special in order to build, only a few system dependencies. You'll need to install [opam](https://opam.ocaml.org/doc/Install.html), `libgmp-dev` and `pkg-config`, the names may vary from system to system.
 
 Then run the sequence of commands:
 
@@ -23,7 +23,7 @@ Just a simple `docker build -t tuna .` should work. And use `docker run --rm -v 
 
 You'll first need a Michelson contract so we can compile it to WebAssembly using tunac, you can use the one in [](./packages/tunac/tests/increment.tz) which is based on the increment example on [](https://ide.ligolang.com).
 
-Then we need an inital storage for the contract, which is this case is very being just an integer. The format is `tunac originate <contract file> <initial storage>`.
+Then we need an inital storage for the contract, which is this case is just an integer. The format is `tunac originate <contract file> <initial storage>`.
 
 Calling tunac with it's repespective parameters will give us the resulting payload for Deku.
 
