@@ -12,7 +12,7 @@
   core_bench,
   alcotest,
 }:
-buildDunePackage {
+buildDunePackage rec {
   pname = "tunac";
   version = "1.0.0";
 
@@ -46,4 +46,6 @@ buildDunePackage {
   ];
 
   doCheck = true;
+
+  meta.mainProgram = "tunacc_test_operation";
 }
