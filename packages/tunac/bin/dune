@@ -14,6 +14,8 @@
 
 (executable
  (name tunacc_test_operation)
+ (public_name tunacc_test_operation)
+ (package tunac)
  (libraries
   tunac
   yojson
