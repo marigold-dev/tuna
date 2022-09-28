@@ -30,6 +30,7 @@ pub mod incoming;
 pub mod instance;
 pub mod managed;
 pub mod outgoing;
+pub mod path;
 pub mod pipe;
 pub mod run_loop;
 pub mod state;

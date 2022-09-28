@@ -9,7 +9,11 @@ use crate::{
     errors::{vm::VmError, VMResult},
     execution_result::ExecutionResult,
     incoming::InvokeManaged,
-    managed::{imports, value::Value},
+    managed::{
+        imports,
+        value::{Union, Value},
+    },
+    path::Path,
 };
 
 pub fn invoke_managed(t: InvokeManaged) -> VMResult<ExecutionResult> {
@@ -62,7 +66,25 @@ pub fn invoke_managed(t: InvokeManaged) -> VMResult<ExecutionResult> {
 
         env.set_gas_left(t.gas_limit as u64);
     }
-    let fst = arena.insert(t.arg);
+    let fst = match t.entrypoint_path {
+        Some(path) => {
+            let res = path
+                .iter()
+                .rev()
+                .fold(arena.insert(t.arg), |acc, path| match path {
+                    Path::Left => {
+                        let l = Value::Union(Union::Left(acc));
+                        arena.insert(l)
+                    }
+                    Path::Right => {
+                        let l = Value::Union(Union::Right(acc));
+                        arena.insert(l)
+                    }
+                });
+            res
+        }
+        None => arena.insert(t.arg),
+    };
     let snd = arena.insert(t.initial_storage);
     let arg = Value::Pair { fst, snd };
     let arg = arena.insert(arg).data().as_ffi();

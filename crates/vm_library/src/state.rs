@@ -7,6 +7,7 @@ use crate::{
     contract_address::ContractAddress,
     errors::{vm::VmError, VMResult},
     outgoing::{Init, InitVec, SetOwned},
+    path::Path,
 };
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct ContractType {
@@ -20,6 +21,7 @@ pub struct ContractType {
     pub serialized_module: Vec<u8>,
     #[serde(with = "serde_bytes")]
     pub constants: Vec<u8>,
+    pub entrypoints: Option<FnvHashMap<String, Vec<Path>>>,
 }
 impl ContractType {
     pub fn set_storage(&mut self, s: Vec<u8>) {
@@ -48,7 +50,7 @@ impl Eq for ContractType {
 
 #[derive(PartialEq, Eq, Debug)]
 pub struct State {
-    pub table: FnvHashMap<ContractAddress, ContractType>,
+    pub table: FnvHashMap<String, ContractType>,
 }
 impl Default for State {
     fn default() -> Self {
@@ -59,11 +61,11 @@ impl Default for State {
 }
 
 impl State {
-    pub fn set(&mut self, key: ContractAddress, value: ContractType) -> Option<ContractType> {
+    pub fn set(&mut self, key: String, value: ContractType) -> Option<ContractType> {
         self.table.insert(key, value)
     }
 
-    pub fn get(&mut self, key: &ContractAddress) -> Option<ContractType> {
+    pub fn get(&mut self, key: &String) -> Option<ContractType> {
         self.table.remove(key)
     }
     pub fn from_init(&mut self, init: Init) -> VMResult<()> {

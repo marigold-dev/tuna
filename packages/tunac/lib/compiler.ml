@@ -257,9 +257,7 @@ let rec compile_instruction ~ctx instruction =
     "(call $push (call $sha512 (call $pop)))"
   | Prim (_, I_CAST, _, _) -> (* Ignored *) ""
   | Prim (_, I_CONCAT, _, _) ->
-    "(local.tee $1 (call $pop)) (call $is_list (local.get $1)) (if (then (call \
-     $push (call $concat (local.get $1)))) (else (call $push (call $concat \
-     (local.get $1) (call $pop)))))"
+    "(call $push (call $concat (call $pop) (call $pop)))"
   | Prim (_, I_TICKET, _, _) ->
     (* pair ( ticket cty ) ( ticket cty ) : A -> option (ticket cty) : A *)
     "(call $push (call $ticket (call $pop) (call $pop)))"
@@ -273,6 +271,8 @@ let rec compile_instruction ~ctx instruction =
     (* pair ( ticket cty ) ( ticket cty ) : A -> option ( ticket cty ) : A *)
     "(call $push (call $join_tickets (call $pop)))"
   | Prim (_, I_PACK, _, _) -> "(call $push (call $pack (call $pop)))"
+  | Prim (_, D_False, _, _) -> "(call $push (call $false))"
+  | Prim (_, D_True, _, _) -> "(call $push (call $true))"
   | Prim (_, I_UNPACK, _, _) -> "(call $push (call $unpack (call $pop)))"
   | Prim (_, prim, _, _) ->
     failwith
@@ -297,6 +297,27 @@ and compile_lambda ~ctx ~unit name body =
   ctx.lambdas <- (id, name, lambda) :: ctx.lambdas;
   id
 
+let rec compile_entry ~state ~path =
+  let open Helpers.Option.Let_syntax in
+  function
+  | Prim (_, T_or, [ (Prim _ as left); (Prim _ as right) ], _) ->
+    let* state = compile_entry ~state ~path:(Path.Left :: path) left in
+    let* state = compile_entry ~state ~path:(Path.Right :: path) right in
+    Some state
+  | Prim (_, _, _, annot) ->
+    Some (Path.M.add (List.hd annot) (List.rev path) state)
+  | _ -> assert false
+
+let check_entrypoints = function
+  | Prim (_, T_or, _, _) -> Some (Path.M.empty, [])
+  | _ -> None
+
+let get_entrypoints =
+  let open Helpers.Option.Let_syntax in
+  fun x ->
+    let* state, path = check_entrypoints x in
+    compile_entry ~state ~path x
+
 let compile code =
   let open Helpers.Result.Let_syntax in
   let* parsed =
@@ -307,7 +328,7 @@ let compile code =
   match parsed with
   | Seq
       ( _
-      , [ Prim (_, K_parameter, _, _)
+      , [ Prim (_, K_parameter, [ prim ], _)
         ; Prim (_, K_storage, _, _)
         ; Prim (_, K_code, [ Seq (_, instructions) ], _)
         ] ) ->
@@ -336,7 +357,8 @@ let compile code =
           (lambda_table ^ lambda_code)
           (fun fmt b -> Format.pp_print_string fmt b)
           body
-      , Array.of_list ctx.constants )
+      , Array.of_list ctx.constants
+      , get_entrypoints prim )
   | _ -> Error `Unexpected_error
 
 let rec compile_value parsed : (Values.t, [> `Unexpected_error ]) result =

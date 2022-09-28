@@ -5,10 +5,10 @@ let read_file name =
   Bytes.to_string @@ Bytes.sub buf 0 size
 
 let compile_contract filename =
-  let wat, constants =
+  let wat, constants, entrypoints =
     filename |> read_file |> Tunac.Compiler.compile |> Result.get_ok
   in
-  let out = Tunac.Output.make wat constants |> Result.get_ok in
+  let out = Tunac.Output.make wat constants entrypoints |> Result.get_ok in
 
   print_endline @@ Yojson.Safe.pretty_to_string @@ Tunac.Output.yojson_of_t out
 

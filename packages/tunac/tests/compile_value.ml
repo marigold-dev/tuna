@@ -103,32 +103,37 @@ let fa12_storage () =
   in
   let expected =
     Tunac.Values.(
-      Pair (
-        Map (Map.of_seq
-          (List.to_seq
-            [ String "tz1gvF4cD2dDtqitL3ZTraggSR1Mju2BKFEM",
-              Pair (
-                Map (Map.of_seq (
-                  List.to_seq
-                    [ String "tz1VjdQ5kZpGjk5tH4hADaee9MAd1knsBVSU", Int (Z.of_int 500) ])),
-                Int (Z.of_int 10000))
-            ; String "tz1VjdQ5kZpGjk5tH4hADaee9MAd1knsBVSU",
-              Pair (
-                Map (Map.of_seq (
-                  List.to_seq
-                    [ String "KT1WiBZHtvv3EczaN628DkNob4cayHzTEDNK", Int (Z.of_int 1000)]
-                )),
-                Int (Z.of_int 50000) )
-            ; String "KT1WiBZHtvv3EczaN628DkNob4cayHzTEDNK",
-              Pair (
-                Map Map.empty, Int (Z.of_int 1000)) ]))
-        , Int (Z.of_int 4000)
-      )
-    )
+      Pair
+        ( Map
+            (Map.of_seq
+               (List.to_seq
+                  [ ( String "tz1gvF4cD2dDtqitL3ZTraggSR1Mju2BKFEM"
+                    , Pair
+                        ( Map
+                            (Map.of_seq
+                               (List.to_seq
+                                  [ ( String
+                                        "tz1VjdQ5kZpGjk5tH4hADaee9MAd1knsBVSU"
+                                    , Int (Z.of_int 500) )
+                                  ]))
+                        , Int (Z.of_int 10000) ) )
+                  ; ( String "tz1VjdQ5kZpGjk5tH4hADaee9MAd1knsBVSU"
+                    , Pair
+                        ( Map
+                            (Map.of_seq
+                               (List.to_seq
+                                  [ ( String
+                                        "KT1WiBZHtvv3EczaN628DkNob4cayHzTEDNK"
+                                    , Int (Z.of_int 1000) )
+                                  ]))
+                        , Int (Z.of_int 50000) ) )
+                  ; ( String "KT1WiBZHtvv3EczaN628DkNob4cayHzTEDNK"
+                    , Pair (Map Map.empty, Int (Z.of_int 1000)) )
+                  ]))
+        , Int (Z.of_int 4000) ))
   in
   Alcotest.(check @@ result value error)
-    "Same value"
-    (Ok expected)
+    "Same value" (Ok expected)
     (Tunac.Compiler.compile_value unparsed_value)
 
 let fa12_entrypoints () =
@@ -136,11 +141,19 @@ let fa12_entrypoints () =
     {| (Left (Left (Left (Pair "tz1VjdQ5kZpGjk5tH4hADaee9MAd1knsBVSU" 1000)))) |}
   in
   let expected =
-    Tunac.Values.(Union (Left (Union (Left (Union (Left (Pair (String "tz1VjdQ5kZpGjk5tH4hADaee9MAd1knsBVSU", Int (Z.of_int 1000)))))))))
+    Tunac.Values.(
+      Union
+        (Left
+           (Union
+              (Left
+                 (Union
+                    (Left
+                       (Pair
+                          ( String "tz1VjdQ5kZpGjk5tH4hADaee9MAd1knsBVSU"
+                          , Int (Z.of_int 1000) ))))))))
   in
   Alcotest.(check @@ result value error)
-    "%%approve"
-    (Ok expected)
+    "%%approve" (Ok expected)
     (Tunac.Compiler.compile_value unparsed_value);
 
   let unparsed_value =
@@ -153,17 +166,20 @@ let fa12_entrypoints () =
   in
   let expected =
     Tunac.Values.(
-      Union (Left
-        (Union (Left
-          (Union (Right
-            (Pair
-              (Pair (String "tz1VjdQ5kZpGjk5tH4hADaee9MAd1knsBVSU", String "tz1gvF4cD2dDtqitL3ZTraggSR1Mju2BKFEM")
-              , String "KT1WiBZHtvv3EczaN628DkNob4cayHzTEDNK")))))))
-    )
+      Union
+        (Left
+           (Union
+              (Left
+                 (Union
+                    (Right
+                       (Pair
+                          ( Pair
+                              ( String "tz1VjdQ5kZpGjk5tH4hADaee9MAd1knsBVSU"
+                              , String "tz1gvF4cD2dDtqitL3ZTraggSR1Mju2BKFEM" )
+                          , String "KT1WiBZHtvv3EczaN628DkNob4cayHzTEDNK" ))))))))
   in
   Alcotest.(check @@ result value error)
-    "%%getAllowance"
-    (Ok expected)
+    "%%getAllowance" (Ok expected)
     (Tunac.Compiler.compile_value unparsed_value);
 
   let unparsed_value =
@@ -176,15 +192,18 @@ let fa12_entrypoints () =
   in
   let expected =
     Tunac.Values.(
-      Union (Left
-        (Union (Right
-          (Union (Left
-            (Pair (String "tz1VjdQ5kZpGjk5tH4hADaee9MAd1knsBVSU", String "KT1WiBZHtvv3EczaN628DkNob4cayHzTEDNK")))))))
-    )
+      Union
+        (Left
+           (Union
+              (Right
+                 (Union
+                    (Left
+                       (Pair
+                          ( String "tz1VjdQ5kZpGjk5tH4hADaee9MAd1knsBVSU"
+                          , String "KT1WiBZHtvv3EczaN628DkNob4cayHzTEDNK" ))))))))
   in
   Alcotest.(check @@ result value error)
-    "%%getBalance"
-    (Ok expected)
+    "%%getBalance" (Ok expected)
     (Tunac.Compiler.compile_value unparsed_value);
 
   let unparsed_value =
@@ -197,31 +216,34 @@ let fa12_entrypoints () =
   in
   let expected =
     Tunac.Values.(
-      Union (Left
-        (Union (Right
-          (Union (Right
-            (Pair (Unit, String "KT1WiBZHtvv3EczaN628DkNob4cayHzTEDNK")))))))
-    )
+      Union
+        (Left
+           (Union
+              (Right
+                 (Union
+                    (Right
+                       (Pair
+                          (Unit, String "KT1WiBZHtvv3EczaN628DkNob4cayHzTEDNK"))))))))
   in
   Alcotest.(check @@ result value error)
-    "%%getTotalSupply"
-    (Ok expected)
+    "%%getTotalSupply" (Ok expected)
     (Tunac.Compiler.compile_value unparsed_value);
 
   let unparsed_value =
-   {| ( Right ( Pair "tz1VjdQ5kZpGjk5tH4hADaee9MAd1knsBVSU" ( Pair "tz1gvF4cD2dDtqitL3ZTraggSR1Mju2BKFEM" 500 ) ) ) |}
+    {| ( Right ( Pair "tz1VjdQ5kZpGjk5tH4hADaee9MAd1knsBVSU" ( Pair "tz1gvF4cD2dDtqitL3ZTraggSR1Mju2BKFEM" 500 ) ) ) |}
   in
   let expected =
     Tunac.Values.(
-      Union (Right
-        (Pair
-          ( String "tz1VjdQ5kZpGjk5tH4hADaee9MAd1knsBVSU"
-          , Pair (String "tz1gvF4cD2dDtqitL3ZTraggSR1Mju2BKFEM", Int (Z.of_int 500)))))
-    )
+      Union
+        (Right
+           (Pair
+              ( String "tz1VjdQ5kZpGjk5tH4hADaee9MAd1knsBVSU"
+              , Pair
+                  ( String "tz1gvF4cD2dDtqitL3ZTraggSR1Mju2BKFEM"
+                  , Int (Z.of_int 500) ) ))))
   in
   Alcotest.(check @@ result value error)
-    "%%transfer"
-    (Ok expected)
+    "%%transfer" (Ok expected)
     (Tunac.Compiler.compile_value unparsed_value)
 
 let () =
@@ -242,5 +264,5 @@ let () =
     ; ( "Complex values"
       , [ test_case "FA1.2 storage" `Quick fa12_storage
         ; test_case "FA1.2 entrypoints" `Quick fa12_entrypoints
-        ])
+        ] )
     ]

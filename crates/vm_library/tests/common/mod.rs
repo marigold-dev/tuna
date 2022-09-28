@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 use vm_library::{
-    compile_store, incoming::InvokeManaged, managed::value::Value, ticket_table::Ticket,
+    compile_store, incoming::InvokeManaged, managed::value::Value, path::Path, ticket_table::Ticket,
 };
 use wasmer::{wat2wasm, Module};
 pub fn deser(s: String) -> (Init, Module) {
@@ -18,6 +18,7 @@ pub fn create_incoming_managed<'a>(
     tickets: &'a [Ticket],
     arg: Value,
     initial_storage: Value,
+    entrypoint_path: &'a Option<Vec<Path>>,
 ) -> InvokeManaged<'a> {
     InvokeManaged {
         mod_: mode,
@@ -25,6 +26,7 @@ pub fn create_incoming_managed<'a>(
         initial_storage,
         constants: deser.constants.clone(),
         tickets,
+        entrypoint_path,
         source: "tz1gvF4cD2dDtqitL3ZTraggSR1Mju2BKFEM".to_string(),
         sender: "tz1gvF4cD2dDtqitL3ZTraggSR1Mju2BKFEM".to_string(),
         self_addr: "KT1WiBZHtvv3EczaN628DkNob4cayHzTEDNK".to_string(),

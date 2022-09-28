@@ -1,11 +1,11 @@
 use fnv::FnvHashMap;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
-use crate::{contract_address::ContractAddress, state::ContractType};
+use crate::state::ContractType;
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct SetOwned {
-    pub key: ContractAddress,
+    pub key: String,
     #[serde(serialize_with = "base64ser", deserialize_with = "base64deser")]
     pub value: ContractType,
 }
@@ -29,7 +29,7 @@ where
 }
 #[repr(transparent)]
 #[derive(Deserialize, Serialize, Debug)]
-pub struct Init(pub FnvHashMap<ContractAddress, String>);
+pub struct Init(pub FnvHashMap<String, String>);
 #[repr(transparent)]
 #[derive(Deserialize, Serialize, Debug)]
 pub struct InitVec(pub Vec<SetOwned>);

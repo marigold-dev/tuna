@@ -27,8 +27,9 @@ pub fn populate_predef(sender: String, self_: String, source: String) {
     map.clear();
     map.insert("none".to_owned(), Value::Option(None));
     map.insert("unit".to_owned(), Value::Unit);
-
-    map.insert("nil".to_owned(), Value::List(vector![]));
+    map.insert("true".to_owned(), Value::Bool(true));
+    map.insert("false".to_owned(), Value::Bool(false));
+    map.insert("nil".to_owned(), Value::List(vector![], None));
     map.insert("source".to_owned(), Value::String(source));
     map.insert("sender".to_owned(), Value::String(sender));
     map.insert("self".to_owned(), Value::String(self_));

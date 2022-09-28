@@ -1,7 +1,7 @@
 use blake2::digest::consts::U20;
 use blake2::Digest;
 type Blake2b160 = blake2::Blake2b<U20>;
-use serde::{Deserialize, Serialize};
+use serde::{de::Visitor, Deserialize, Serialize};
 use sha2::{Digest as D, Sha256};
 
 fn checksum(mut s: Vec<u8>) -> Vec<u8> {
@@ -25,10 +25,57 @@ pub fn decode(s: &[u8]) -> Result<Vec<u8>, bs58::decode::Error> {
     Ok(s.to_vec())
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize, Hash, PartialOrd, Ord)]
-pub struct ContractAddress(pub String);
+#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub struct ContractAddress {
+    pub address: String,
+    pub entrypoint: Option<String>,
+}
+struct ContractVisitor;
+impl<'de> Visitor<'de> for ContractVisitor {
+    type Value = ContractAddress;
+    fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+        formatter.write_str("Expected a valid Value")
+    }
+    fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
+    where
+        E: serde::de::Error,
+    {
+        match v.split_once('%') {
+            Some((addr, entrypoint)) => Ok(ContractAddress {
+                address: addr.to_owned(),
+                entrypoint: Some(entrypoint.to_owned()),
+            }),
+            None => Ok(ContractAddress {
+                address: v.to_owned(),
+                entrypoint: None,
+            }),
+        }
+    }
+}
+impl<'de> Deserialize<'de> for ContractAddress {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        deserializer.deserialize_str(ContractVisitor)
+    }
+}
+impl Serialize for ContractAddress {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        match &self.entrypoint {
+            None => serializer.serialize_str(&self.address),
+            Some(entry) => serializer.serialize_str(&format!("{}%{}", self.address, entry)),
+        }
+    }
+}
 impl ContractAddress {
     pub fn new(s: &[u8]) -> Self {
-        Self(encode(&Blake2b160::digest(s)))
+        Self {
+            address: encode(&Blake2b160::digest(s)),
+            entrypoint: None,
+        }
     }
 }

@@ -1,7 +1,6 @@
 use serde::{de::Visitor, ser::SerializeTuple, Deserialize, Serialize};
 
 use crate::{
-    contract_address::ContractAddress,
     outgoing::{InitVec, SetOwned},
     ticket_table::TicketId,
 };
@@ -15,7 +14,7 @@ pub enum ServerMessage {
     Init(InitVec),
     Stop,
     Set(SetOwned),
-    TakeTickets(ContractAddress),
+    TakeTickets(String),
     DepositTickets(TicketDeposit),
     Error(String),
 }
@@ -118,7 +117,7 @@ impl<'de> Visitor<'de> for ServerVisitor {
                     )
                 }
                 "Take_tickets" => {
-                    let elem = seq.next_element::<ContractAddress>()?;
+                    let elem = seq.next_element::<String>()?;
                     elem.map_or_else(
                         || {
                             Err(serde::de::Error::invalid_type(

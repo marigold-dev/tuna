@@ -218,6 +218,73 @@ pub fn z_sub(env: &Context, value1: Value, value2: Value) -> VMResult<i64> {
         .into()),
     }
 }
+pub fn concat_(env: &Context, value1: Value, value2: Value) -> VMResult<i64> {
+    env.update_gas(300)?;
+    match (value1, value2) {
+        (Value::String(x), Value::String(y)) => {
+            let mut new = x.clone();
+            new.push_str(&y);
+            let res = Value::String(new);
+            let key = env.bump(res);
+            conversions::to_i64(key)
+        }
+        (Value::Bytes(x), Value::Bytes(y)) => {
+            let mut new = x.clone();
+            new.extend(y.iter());
+            let res = Value::Bytes(new);
+            let key = env.bump(res);
+            conversions::to_i64(key)
+        }
+        (Value::List(x, tag), rest) => {
+            env.push_value(env.bump(rest) as i64)?;
+            let new = match tag {
+                Some(Tag::Bytes) => {
+                    let mut res = Vec::with_capacity(500);
+                    x.iter().try_for_each(|x| match x {
+                        Value::Bytes(x) => {
+                            res.extend_from_slice(x);
+                            Ok::<(), VmError>(())
+                        }
+                        x => Err(FFIError::ExternError {
+                            value: x.clone(),
+                            msg: "type mismatch, expected Bytes".to_owned(),
+                        }
+                        .into()),
+                    })?;
+                    let res = res;
+                    Ok::<Value, VmError>(Value::Bytes(res))
+                }
+
+                Some(Tag::String) => {
+                    let mut res = String::with_capacity(500);
+                    x.iter().try_for_each(|x| match x {
+                        Value::String(x) => {
+                            res.push_str(x);
+                            Ok::<(), VmError>(())
+                        }
+                        x => Err(FFIError::ExternError {
+                            value: x.clone(),
+                            msg: "type mismatch, expected Bytes".to_owned(),
+                        }
+                        .into()),
+                    })?;
+                    let res = res;
+                    Ok::<Value, VmError>(Value::String(res))
+                }
+                None => Err(VmError::RuntimeErr(
+                    "type mismatch, expected Tag".to_owned(),
+                )),
+            }?;
+            let key = env.bump(new);
+            conversions::to_i64(key)
+        }
+        (x, _) => Err(FFIError::ExternError {
+            value: x,
+            msg: "type mismatch, expected Int".to_owned(),
+        }
+        .into()),
+    }
+}
 pub fn ediv(env: &Context, value1: Value, value2: Value) -> VMResult<i64> {
     env.update_gas(300)?;
     match (value1, value2) {
@@ -374,7 +441,7 @@ pub fn if_none(env: &Context, value: Value) -> VMResult<i32> {
 pub fn if_cons(env: &Context, value: Value) -> VMResult<i32> {
     env.update_gas(300)?;
     match value {
-        Value::List(x) if x.len() == 2 => {
+        Value::List(x, tag) if x.len() == 2 => {
             x.last().map_or_else(
                 || Err(VmError::RuntimeErr("cant happen".to_owned())),
                 |v| {
@@ -386,13 +453,13 @@ pub fn if_cons(env: &Context, value: Value) -> VMResult<i32> {
             )?;
             let rest = x.take(x.len() - 2);
 
-            let bumped = env.bump(Value::List(rest));
+            let bumped = env.bump(Value::List(rest, tag));
             let key = conversions::to_i64(bumped)?;
             env.push_value(key)?;
 
             Ok(1)
         }
-        Value::List(x) if x.len() == 1 => {
+        Value::List(x, _tag) if x.len() == 1 => {
             x.head().map_or_else(
                 || Err(VmError::RuntimeErr("cant happen".to_owned())),
                 |v| {
@@ -594,7 +661,7 @@ pub fn size(env: &Context, value: Value) -> VMResult<i64> {
             let key = conversions::to_i64(bumped)?;
             Ok(key)
         }
-        Value::List(x) => {
+        Value::List(x, _) => {
             let opt = Value::Int(x.len().into());
             let bumped = env.bump(opt);
             let key = conversions::to_i64(bumped)?;
@@ -1037,6 +1104,10 @@ pub fn make_imports(env: &Context, store: &Store) -> ImportObject {
         Function::new_native_with_env(store, env.clone(), call2(z_sub)),
     );
     exports.insert(
+        "concat",
+        Function::new_native_with_env(store, env.clone(), call2(concat_)),
+    );
+    exports.insert(
         "ediv",
         Function::new_native_with_env(store, env.clone(), call2(ediv)),
     );
@@ -1163,6 +1234,14 @@ pub fn make_imports(env: &Context, store: &Store) -> ImportObject {
     exports.insert(
         "self",
         Function::new_native_with_env(store, env.clone(), self_),
+    );
+    exports.insert(
+        "true",
+        Function::new_native_with_env(store, env.clone(), true_),
+    );
+    exports.insert(
+        "false",
+        Function::new_native_with_env(store, env.clone(), false_),
     );
     exports.insert(
         "balance",
@@ -1351,6 +1430,22 @@ fn nil(c: &Context) -> VMResult<i64> {
     let bumped = c.bump(nil.clone());
     conversions::to_i64(bumped)
 }
+fn true_(c: &Context) -> VMResult<i64> {
+    let predef = unsafe { &PREDEF };
+    let nil = predef
+        .get("true")
+        .map_or_else(|| Err(VmError::RuntimeErr("cant happen".to_owned())), Ok)?;
+    let bumped = c.bump(nil.clone());
+    conversions::to_i64(bumped)
+}
+fn false_(c: &Context) -> VMResult<i64> {
+    let predef = unsafe { &PREDEF };
+    let nil = predef
+        .get("false")
+        .map_or_else(|| Err(VmError::RuntimeErr("cant happen".to_owned())), Ok)?;
+    let bumped = c.bump(nil.clone());
+    conversions::to_i64(bumped)
+}
 fn unit(c: &Context) -> VMResult<i64> {
     let predef = unsafe { &PREDEF };
     let nil = predef
@@ -1418,10 +1513,10 @@ fn source(c: &Context) -> VMResult<i64> {
 }
 fn cons(c: &Context, v1: Value, v2: Value) -> VMResult<i64> {
     match v2 {
-        Value::List(x) => {
+        Value::List(x, tag) => {
             let mut x = x;
             x.push_front(v1);
-            let lst = Value::List(x);
+            let lst = Value::List(x, tag);
             let bumped = c.bump(lst);
             conversions::to_i64(bumped)
         }
@@ -1452,7 +1547,7 @@ fn none(c: &Context) -> VMResult<i64> {
 }
 fn map(env: &Context, v: Value, idx: i32) -> VMResult<i64> {
     match v {
-        Value::List(x) => {
+        Value::List(x, _) => {
             let new: VMResult<Vector<Value>> = x
                 .iter()
                 .map(|x| {
@@ -1463,7 +1558,12 @@ fn map(env: &Context, v: Value, idx: i32) -> VMResult<i64> {
                 })
                 .collect();
             let val = new?;
-            let bumped = env.bump(Value::List(val));
+            let tag = match val.head() {
+                Some(Value::Bytes(_)) => Some(Tag::Bytes),
+                Some(Value::String(_)) => Some(Tag::String),
+                _ => None,
+            };
+            let bumped = env.bump(Value::List(val, tag));
             Ok(bumped as i64)
         }
         Value::Set(x) => {
@@ -1564,7 +1664,7 @@ fn apply(env: &Context, v: Value, lam: Value) -> VMResult<i64> {
 }
 fn iter(env: &Context, v: Value, idx: i32) -> VMResult<()> {
     match v {
-        Value::List(x) => x.iter().try_for_each(|x| {
+        Value::List(x, _) => x.iter().try_for_each(|x| {
             let reff = x.clone();
             let bumped = env.bump(reff);
             env.call_unit(bumped as i64, idx)

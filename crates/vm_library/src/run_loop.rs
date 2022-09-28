@@ -1,13 +1,16 @@
+use fnv::FnvHashMap;
+
 use crate::{
     arena::{ARENA, CONSUMEDTICKETS, TICKETABLE},
     compile,
-    contract_address::{decode, ContractAddress},
+    contract_address::ContractAddress,
     errors::{vm::VmError, VMResult},
     execution_result::ExecutionResult,
     incoming::InvokeManaged,
     instance::invoke_managed,
     managed::value::Value,
     outgoing::{InitVec, SetOwned},
+    path::Path,
     pipe::IO,
     state::{ContractType, State},
     ticket_table::{Ticket, TicketTable},
@@ -35,7 +38,7 @@ pub fn run_loop(io: IO) {
             .to_revert
             .drain(0..)
             .for_each(|(addr, contract_type)| {
-                context.state.set(addr, contract_type);
+                context.state.set(addr.address, contract_type);
             });
         let arena = unsafe { &mut ARENA };
 
@@ -90,7 +93,7 @@ fn handle_transaction(
                 if get_tickets {
                     context
                         .io
-                        .write_with_fail(&ServerMessage::TakeTickets(address.clone()))
+                        .write_with_fail(&ServerMessage::TakeTickets(address.address.clone()))
                         .map_err(|err| VmError::RuntimeErr(err.to_string()))?;
                     'd: loop {
                         match context.io.read() {
@@ -114,6 +117,7 @@ fn handle_transaction(
                 module_,
                 constants,
                 initial_storage,
+                entrpoints,
             } => {
                 let addres = handle_originate(
                     context,
@@ -122,6 +126,7 @@ fn handle_transaction(
                     initial_storage,
                     transaction.operation_raw_hash.as_bytes().to_vec(),
                     transaction.source,
+                    entrpoints,
                 )?;
                 let address = contract_addr_to_string(&addres);
                 context
@@ -155,6 +160,7 @@ fn handle_originate(
     initial_storage: Value,
     operation_hash: Vec<u8>,
     originated_by: String,
+    entrypoints: Option<FnvHashMap<String, Vec<Path>>>,
 ) -> VMResult<ContractAddress> {
     let module = compile::compile_managed_module(module.as_bytes())?;
     let serialized = module
@@ -168,12 +174,13 @@ fn handle_originate(
         module: Some(Box::from(module)),
         serialized_module: serialized,
         constants: bincode::serialize(&constants).expect("error"),
+        entrypoints,
     };
     let msg = &ServerMessage::Set(SetOwned {
-        key: addr.clone(),
+        key: addr.address.clone(),
         value: contract_type.clone(),
     });
-    context.state.set(addr.clone(), contract_type);
+    context.state.set(addr.address.clone(), contract_type);
     match context.io.write_with_fail(msg) {
         Ok(()) => Ok(addr),
         Err(_) => {
@@ -185,7 +192,7 @@ fn handle_originate(
     }
 }
 pub fn contract_addr_to_string(c: &ContractAddress) -> String {
-    c.0.clone()
+    c.address.clone()
 }
 fn handle_invoke(
     context: &mut ExecutionState,
@@ -195,7 +202,7 @@ fn handle_invoke(
     mut gas_limit: u64,
     tickets: Vec<Ticket>,
 ) -> VMResult<u64> {
-    match context.state.get(&address) {
+    match context.state.get(&address.address) {
         Some(contract) => {
             context.to_revert.push((address.clone(), contract.clone()));
             {
@@ -206,9 +213,17 @@ fn handle_invoke(
                     bincode::deserialize(&contract.storage).expect("error");
                 let constantst: Vec<(i32, Value)> =
                     bincode::deserialize(&contract.constants).expect("error");
+
                 let invoke_payload = InvokeManaged {
                     mod_: (contract.module.as_ref().unwrap()),
                     arg,
+                    entrypoint_path: &address.entrypoint.as_ref().map_or_else(
+                        || None,
+                        |x| {
+                            let map = contract.entrypoints.as_ref()?;
+                            map.get(x).cloned()
+                        },
+                    ),
                     initial_storage,
                     constants: constantst,
                     tickets: &tickets,
@@ -216,7 +231,7 @@ fn handle_invoke(
                     sender: transaction
                         .sender
                         .unwrap_or_else(|| transaction.source.clone()),
-                    self_addr: address.0.clone(),
+                    self_addr: address.address.clone(),
                     gas_limit,
                 };
                 let self_addr = address.clone();
@@ -243,10 +258,10 @@ fn handle_invoke(
                         };
                         contract.set_storage(serialized_storage);
                         let msg = &ServerMessage::Set(SetOwned {
-                            key: address.clone(),
+                            key: address.address.clone(),
                             value: contract.clone(),
                         });
-                        context.state.set(address.clone(), contract);
+                        context.state.set(address.address.clone(), contract);
                         match context.io.write_with_fail(msg) {
                             Ok(()) => (),
                             Err(_) => {
@@ -258,7 +273,7 @@ fn handle_invoke(
                         };
                         let arena = unsafe { &ARENA };
                         match ops {
-                            Value::List(l) if !l.is_empty() => {
+                            Value::List(l, _) if !l.is_empty() => {
                                 let res: VMResult<Vec<Transaction>> = l
                                     .into_iter()
                                     .map(|trans| match trans {
@@ -272,7 +287,7 @@ fn handle_invoke(
                                                     .to_owned(),
                                             )
                                                 })?;
-                                            let address = match address {
+                                            let contract_addr = match address {
                                             Value::String(s) => Ok(s),
                                             _ => Err(VmError::RuntimeErr(
                                                 "bad transaction format from additional operations"
@@ -288,10 +303,25 @@ fn handle_invoke(
                                             )
                                                 })?;
 
-                                            match decode(address.as_bytes()) {
-                                                Ok(_) => {
+                                            match contract_addr.starts_with("DK1") {
+                                                true => {
+                                                    let extra =
+                                                        contract_addr.split_once('%').map_or_else(
+                                                            || ContractAddress {
+                                                                address: contract_addr.clone(),
+                                                                entrypoint: None,
+                                                            },
+                                                            |(address, entrypoint)| {
+                                                                ContractAddress {
+                                                                    address: address.to_owned(),
+                                                                    entrypoint: Some(
+                                                                        entrypoint.to_owned(),
+                                                                    ),
+                                                                }
+                                                            },
+                                                        );
                                                     let operation = Operation::Invoke {
-                                                        address: self_addr.clone(),
+                                                        address: extra,
                                                         argument: content,
                                                         gas_limit: remaining_gas,
                                                     };
@@ -306,7 +336,7 @@ fn handle_invoke(
                                                     deposit.clear();
                                                     let transaction = Transaction {
                                                         source: transaction.source.clone(),
-                                                        sender: Some(self_addr.0),
+                                                        sender: Some(self_addr.address),
                                                         operation,
                                                         operation_raw_hash: transaction
                                                             .operation_raw_hash
@@ -316,7 +346,7 @@ fn handle_invoke(
 
                                                     Ok(transaction)
                                                 }
-                                                Err(_) => {
+                                                false => {
                                                     let deposit = unsafe { &mut CONSUMEDTICKETS };
                                                     serde_json::to_string(&content).map_err(
                                                         |err| VmError::RuntimeErr(err.to_string()),
@@ -324,7 +354,7 @@ fn handle_invoke(
                                                     let tickets = deposit.clone();
                                                     deposit.clear();
                                                     let operation = Operation::Transfer {
-                                                        address,
+                                                        address: contract_addr,
                                                         tickets: tickets.clone(),
                                                     };
                                                     let operation = serde_json::to_string(
@@ -335,7 +365,7 @@ fn handle_invoke(
                                                     })?;
                                                     let transaction = Transaction {
                                                         source: transaction.source.clone(),
-                                                        sender: Some(self_addr.0),
+                                                        sender: Some(self_addr.address),
                                                         operation,
                                                         operation_raw_hash: transaction
                                                             .operation_raw_hash

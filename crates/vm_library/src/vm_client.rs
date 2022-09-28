@@ -1,9 +1,11 @@
+use fnv::FnvHashMap;
 use serde::{de::Visitor, ser::SerializeTuple, Deserialize, Serialize};
 
 use crate::{
     contract_address::ContractAddress,
     managed::value::Value,
     outgoing::{Init, SetOwned},
+    path::Path,
     ticket_table::TicketId,
 };
 
@@ -14,6 +16,7 @@ pub enum Operation {
         module_: String,
         constants: Vec<(u32, Value)>,
         initial_storage: Value,
+        entrpoints: Option<FnvHashMap<String, Vec<Path>>>,
     },
     Invoke {
         address: ContractAddress,

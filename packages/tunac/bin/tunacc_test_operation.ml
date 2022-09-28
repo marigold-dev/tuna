@@ -14,6 +14,7 @@ type originate_payload =
   { module_ : string
   ; constants : (int * Tunac.Values.t) array
   ; initial_storage : Tunac.Values.t
+  ; entrypoints : Tunac.Path.t option
   }
 [@@deriving yojson]
 
@@ -25,15 +26,16 @@ type invoke_payload =
 
 let originate contract init =
   let init = Tunac.Compiler.compile_value init |> Result.get_ok in
-  let wat, constants =
+  let wat, constants, entrypoints =
     contract |> read_file |> Tunac.Compiler.compile |> Result.get_ok
   in
-  let out = Tunac.Output.make wat constants |> Result.get_ok in
+  let out = Tunac.Output.make wat constants entrypoints |> Result.get_ok in
   { type_ = "Originate"
   ; content =
       { module_ = out.Tunac.Output.module_
       ; constants = out.Tunac.Output.constants
       ; initial_storage = init
+      ; entrypoints = out.Tunac.Output.entrypoints
       }
   }
   |> yojson_of_t yojson_of_originate_payload

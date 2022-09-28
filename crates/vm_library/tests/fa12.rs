@@ -32,7 +32,8 @@ fn get_balance() {
     let arg = Value::Union(Union::Left(bump));
     let (deser, module) = common::deser(payload);
     let tickets: Vec<Ticket> = vec![];
-    let init = common::create_incoming_managed(&module, &deser, &tickets, arg, storage.clone());
+    let init =
+        common::create_incoming_managed(&module, &deser, &tickets, arg, storage.clone(), &None);
     let ExecutionResult {
         new_storage, ops, ..
     } = invoke_managed(init).unwrap();
@@ -49,7 +50,7 @@ fn get_balance() {
     let pair = Value::Pair { fst, snd };
     assert_eq!(
         serde_json::to_string(&ops).unwrap(),
-        serde_json::to_string(&Value::List(im_rc::vector![pair])).unwrap()
+        serde_json::to_string(&Value::List(im_rc::vector![pair], None)).unwrap()
     );
 }
 
@@ -71,7 +72,8 @@ fn get_total_supply() {
     let arg = Value::Union(Union::Left(bump));
     let (deser, module) = common::deser(payload);
     let tickets: Vec<Ticket> = vec![];
-    let init = common::create_incoming_managed(&module, &deser, &tickets, arg, storage.clone());
+    let init =
+        common::create_incoming_managed(&module, &deser, &tickets, arg, storage.clone(), &None);
     let ExecutionResult {
         new_storage, ops, ..
     } = invoke_managed(init).unwrap();
@@ -92,7 +94,7 @@ fn get_total_supply() {
     let pair = Value::Pair { fst, snd };
     assert_eq!(
         serde_json::to_string(&ops).unwrap(),
-        serde_json::to_string(&Value::List(im_rc::vector![pair])).unwrap()
+        serde_json::to_string(&Value::List(im_rc::vector![pair], None)).unwrap()
     );
 }
 
@@ -115,7 +117,7 @@ fn approve() {
     let arg = Value::Union(Union::Left(bump));
     let (deser, module) = common::deser(payload);
     let tickets: Vec<Ticket> = vec![];
-    let init = common::create_incoming_managed(&module, &deser, &tickets, arg, storage.clone());
+    let init = common::create_incoming_managed(&module, &deser, &tickets, arg, storage, &None);
     let ExecutionResult { new_storage, .. } = invoke_managed(init).unwrap();
     assert_eq!(
         serde_json::to_string(&new_storage).unwrap(),
@@ -163,7 +165,7 @@ fn transfer() {
     let arg = Value::Union(Union::Right(bump));
     let (deser, module) = common::deser(payload);
     let tickets: Vec<Ticket> = vec![];
-    let init = common::create_incoming_managed(&module, &deser, &tickets, arg, storage.clone());
+    let init = common::create_incoming_managed(&module, &deser, &tickets, arg, storage, &None);
     let ExecutionResult { new_storage, .. } = invoke_managed(init).unwrap();
     assert_eq!(
         serde_json::to_string(&new_storage).unwrap(),
@@ -186,7 +188,8 @@ fn get_allowance() {
     let arg = Value::Union(Union::Left(bump));
     let (deser, module) = common::deser(payload);
     let tickets: Vec<Ticket> = vec![];
-    let init = common::create_incoming_managed(&module, &deser, &tickets, arg, storage.clone());
+    let init =
+        common::create_incoming_managed(&module, &deser, &tickets, arg, storage.clone(), &None);
     let ExecutionResult {
         new_storage, ops, ..
     } = invoke_managed(init).unwrap();
@@ -203,6 +206,6 @@ fn get_allowance() {
     let pair = Value::Pair { fst, snd };
     assert_eq!(
         serde_json::to_string(&ops).unwrap(),
-        serde_json::to_string(&Value::List(im_rc::vector![pair])).unwrap()
+        serde_json::to_string(&Value::List(im_rc::vector![pair], None)).unwrap()
     );
 }

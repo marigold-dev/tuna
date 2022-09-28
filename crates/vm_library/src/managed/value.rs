@@ -111,6 +111,11 @@ impl<'de> Deserialize<'de> for Union {
         deserializer.deserialize_tuple(2, UnionVisitor)
     }
 }
+#[derive(Debug, PartialEq, PartialOrd, Eq, Ord, Copy, Clone)]
+pub enum Tag {
+    Bytes,
+    String,
+}
 #[derive(Debug, PartialEq, PartialOrd, Eq, Ord)]
 pub enum Value {
     Bytes(Vec<u8>),
@@ -124,7 +129,7 @@ pub enum Value {
     Bool(bool),
     Map(OrdMap<Value, Value>),
     Set(OrdSet<Value>),
-    List(Vector<Value>),
+    List(Vector<Value>, Option<Tag>),
     Unit,
     Option(Option<DefaultKey>),
     Ticket(usize),
@@ -172,7 +177,7 @@ impl Clone for Value {
             Self::Bool(arg0) => Self::Bool(*arg0),
             Self::Map(arg0) => Self::Map(arg0.clone()),
             Self::Set(arg0) => Self::Set(arg0.clone()),
-            Self::List(arg0) => Self::List(arg0.clone()),
+            Self::List(arg0, tag) => Self::List(arg0.clone(), *tag),
             Self::Unit => Self::Unit,
             Self::Option(arg0) => match arg0 {
                 None => Self::Option(None),
@@ -286,7 +291,14 @@ impl<'de> Visitor<'de> for ValueVisitor {
                                 &"Value enum",
                             ))
                         },
-                        |x| Ok(Value::List(x)),
+                        |x| {
+                            let tag = match &x.head() {
+                                Some(Value::Bytes(_)) => Some(Tag::Bytes),
+                                Some(Value::String(_)) => Some(Tag::String),
+                                Some(_) | None => None,
+                            };
+                            Ok(Value::List(x, tag))
+                        },
                     )
                 }
                 "Ticket" => {
@@ -491,7 +503,7 @@ impl Serialize for Value {
                 seq.serialize_element(value2)?;
                 seq.end()
             }
-            List(lst) => {
+            List(lst, _) => {
                 let mut seq = serializer.serialize_tuple(3)?;
                 seq.serialize_element("List")?;
                 seq.serialize_element(&lst)?;
