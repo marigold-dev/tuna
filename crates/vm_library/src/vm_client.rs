@@ -16,7 +16,7 @@ pub enum Operation {
         module_: String,
         constants: Vec<(u32, Value)>,
         initial_storage: Value,
-        entrpoints: Option<FnvHashMap<String, Vec<Path>>>,
+        entrypoints: Option<FnvHashMap<String, Vec<Path>>>,
     },
     Invoke {
         address: ContractAddress,

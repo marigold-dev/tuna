@@ -119,7 +119,7 @@ fn handle_transaction(
                 module_,
                 constants,
                 initial_storage,
-                entrpoints,
+                entrypoints,
             } => {
                 let addres = handle_originate(
                     context,
@@ -128,7 +128,7 @@ fn handle_transaction(
                     initial_storage,
                     transaction.operation_raw_hash.as_bytes().to_vec(),
                     transaction.source,
-                    entrpoints,
+                    entrypoints,
                 )?;
                 let address = contract_addr_to_string(&addres);
                 context
@@ -215,7 +215,6 @@ fn handle_invoke(
                     bincode::deserialize(&contract.storage).expect("error");
                 let constantst: Vec<(i32, Value)> =
                     bincode::deserialize(&contract.constants).expect("error");
-
                 let invoke_payload = InvokeManaged {
                     mod_: (contract.module.as_ref().unwrap()),
                     arg,
@@ -223,7 +222,7 @@ fn handle_invoke(
                         || None,
                         |x| {
                             let map = contract.entrypoints.as_ref()?;
-                            map.get(x).cloned()
+                            map.get(&format!("%{}", x)).cloned()
                         },
                     ),
                     initial_storage,
