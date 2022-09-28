@@ -25,6 +25,8 @@ You'll first need a Michelson contract so we can compile it to WebAssembly using
 
 Then we need an inital storage for the contract, which is this case is just an integer. The format is `tunac originate <contract file> <initial storage>`.
 
+It's important to notice that some Tezos specific Michelson instructions are not supported, like `CHAIN_ID` and `VOTING_POWER`, so contracts containing these instructions **won't compile**.
+
 Calling tunac with it's repespective parameters will give us the resulting payload for Deku.
 
 ```
