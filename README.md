@@ -21,7 +21,7 @@ Just a simple `docker build -t tuna .` should work. And use `docker run --rm -v 
 
 ## Compiling
 
-You'll first need a Michelson contract so we can compile it to WebAssembly using tunac, you can use the one in [](./packages/tunac/tests/increment.tz) which is based on the increment example on [](https://ide.ligolang.com).
+You'll first need a Michelson contract so we can compile it to WebAssembly using tunac, you can use the one in [./packages/tunac/tests/increment.tz](./packages/tunac/tests/increment.tz) which is based on the increment example on [https://ide.ligolang.com](https://ide.ligolang.com).
 
 Then we need an inital storage for the contract, which is this case is just an integer. The format is `tunac originate <contract file> <initial storage>`.
 
