@@ -95,6 +95,9 @@ let import_list =
   ; func ref__ref "sha256"
   ; func ref__ref "sha3"
   ; func ref__ref "sha512"
+  ; func ref__ref "concat"
+  ; func ref__ref "is_list"
+  ; func const "now"
   ]
   |> String.concat "\n"
 
