@@ -4,8 +4,10 @@ WORKDIR /app
 
 COPY packages dune dune-project tunac.opam tunac.opam.locked .
 
-RUN sudo apt update -y && sudo apt install -y libgmp-dev pkg-config && opam install . --deps-only --with-test
+RUN sudo apt update -y && \
+    sudo apt install -y libgmp-dev pkg-config && \
+    opam install . --deps-only
 
-RUN eval $(opam env) && dune build
+RUN eval $(opam env) && dune build --release
 
-RUN sudo cp ./_build/default/tunac/bin/tunacc_test_operation.exe /usr/bin/tunac
+RUN sudo install  ./_build/install/default/bin/tunac /usr/bin/tunac

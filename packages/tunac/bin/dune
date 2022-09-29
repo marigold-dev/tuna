@@ -3,10 +3,6 @@
  (libraries
   tunac
   yojson
-  core
-  core_unix
-  core_unix.command_unix
-  core_bench
   wasm)
  (modules tunacc_test)
  (preprocess
@@ -14,15 +10,11 @@
 
 (executable
  (name tunacc_test_operation)
- (public_name tunacc_test_operation)
+ (public_name tunac)
  (package tunac)
  (libraries
   tunac
   yojson
-  core
-  core_unix
-  core_unix.command_unix
-  core_bench
   wasm)
  (modules tunacc_test_operation)
  (preprocess

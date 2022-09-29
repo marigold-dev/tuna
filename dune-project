@@ -30,5 +30,7 @@
   (ocamlformat-rpc :with-test)
   (ocamlformat :with-test)
   (ocaml-lsp-server :with-test)
+  (core_bench :with-test)
+  (alcotest :with-test)
   (odoc :with-doc)
   (odig :with-doc)))
