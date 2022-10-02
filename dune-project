@@ -28,7 +28,7 @@
   data-encoding
   tezos-micheline
   core
-  core.unix
+  core_unix
   ppx_jane
   (ocamlformat-rpc :with-test)
   (ocamlformat :with-test)
