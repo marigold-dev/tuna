@@ -9,7 +9,9 @@
   wasm,
   data-encoding,
   tezos-micheline,
-  core_bench,
+  core, 
+  core_unix, 
+  ppx_jane,
   alcotest,
 }:
 buildDunePackage rec {
@@ -38,7 +40,9 @@ buildDunePackage rec {
 
   buildInputs = [
     yojson
-    core_bench
+   core
+  core_unix
+  ppx_jane
   ];
 
   checkInputs = [

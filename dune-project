@@ -27,6 +27,9 @@
   wasm
   data-encoding
   tezos-micheline
+  core
+  core.unix
+  ppx_jane
   (ocamlformat-rpc :with-test)
   (ocamlformat :with-test)
   (ocaml-lsp-server :with-test)
