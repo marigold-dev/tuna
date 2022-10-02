@@ -81,7 +81,7 @@ let invoke =
      fun () -> invoke address argument)
 
 let command =
-  Command.group ~summary:"Manipulate dates"
+  Command.group ~summary:"Originate/invoke contracts"
     [ ("originate", originate); ("invoke", invoke) ]
 
 let () = Command_unix.run command
