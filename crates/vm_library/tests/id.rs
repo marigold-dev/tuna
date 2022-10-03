@@ -103,7 +103,7 @@ fn buy() {
     let arg = Value::Union(Union::Left(bump));
     let (deser, module) = common::deser(payload);
     let tickets: Vec<Ticket> = vec![];
-    let init = common::create_incoming_managed(&module, &deser, &tickets, 7, arg, storage.clone());
+    let init = common::create_incoming_managed(&module, &deser, &tickets, 7, arg, storage.clone(), &None);
     let ExecutionResult {
         new_storage,
         ops: _,
@@ -186,7 +186,7 @@ fn update_owner() {
     let arg = Value::Union(Union::Right(bump));
     let (deser, module) = common::deser(payload);
     let tickets: Vec<Ticket> = vec![];
-    let init = common::create_incoming_managed(&module, &deser, &tickets, 0, arg, storage.clone());
+    let init = common::create_incoming_managed(&module, &deser, &tickets, 0, arg, storage.clone(), &None);
     let ExecutionResult {
         new_storage,
         ops: _,
@@ -269,7 +269,7 @@ fn update_details() {
     let arg = Value::Union(Union::Right(bump));
     let (deser, module) = common::deser(payload);
     let tickets: Vec<Ticket> = vec![];
-    let init = common::create_incoming_managed(&module, &deser, &tickets, 0, arg, storage.clone());
+    let init = common::create_incoming_managed(&module, &deser, &tickets, 0, arg, storage.clone(), &None);
     let ExecutionResult {
         new_storage,
         ops: _,
@@ -352,7 +352,7 @@ fn skip() {
     let arg = Value::Union(Union::Left(bump));
     let (deser, module) = common::deser(payload);
     let tickets: Vec<Ticket> = vec![];
-    let init = common::create_incoming_managed(&module, &deser, &tickets, 6, arg, storage.clone());
+    let init = common::create_incoming_managed(&module, &deser, &tickets, 6, arg, storage.clone(), &None);
     let ExecutionResult {
         new_storage,
         ops: _,
