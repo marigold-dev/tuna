@@ -378,9 +378,17 @@ let rec compile_value parsed : (Values.t, [> `Unexpected_error ]) result =
   | Prim (_, D_Right, [ value ], _) ->
     let* value = compile_value value in
     Ok (Union (Right value))
-  | Prim (_, D_Pair, [ fst; snd ], _) ->
+  | Prim (_, D_Pair, fst :: values, _) ->
     let* fst = compile_value fst in
-    let* snd = compile_value snd in
+    let[@warning "-8"] values, [ end_ ] =
+      Core.List.split_n values (List.length values - 1)
+    in
+    let* end_ = compile_value end_ in
+    let snd =
+      List.fold_right
+        (fun x acc -> Pair (compile_value x |> Result.get_ok, acc))
+        values end_
+    in
     Ok (Pair (fst, snd))
   | Int (_, z) -> Ok (Values.Int z)
   | String (_, s) -> Ok (Values.String s)

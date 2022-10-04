@@ -1,3 +1,9 @@
+type ticket_id =
+  { ticketer : string
+  ; data : bytes
+  }
+[@@deriving ord, eq, yojson]
+
 module rec V : sig
   type union =
     | Left of t
@@ -14,6 +20,10 @@ module rec V : sig
     | Option of t option
     | Unit
     | Map of t Map.t
+    | Ticket of
+        { ticket_id : ticket_id
+        ; amount : int64
+        }
     | Set of Set.t
   [@@deriving ord, eq, yojson]
 

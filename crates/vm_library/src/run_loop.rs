@@ -54,7 +54,7 @@ pub fn run_loop(io: IO) {
                 }
                 ClientMessage::Transaction(transaction) => {
                     log::info!("Received transaction {:?}", transaction);
-                    match handle_transaction(&mut context, transaction, false, 0) {
+                    match handle_transaction(&mut context, transaction, 0) {
                         Ok(_) => context.io.write(&ServerMessage::Stop),
                         Err(_) => break 'inner,
                     }
@@ -74,7 +74,6 @@ pub fn run_loop(io: IO) {
 fn handle_transaction(
     context: &mut ExecutionState,
     transaction: Transaction,
-    get_tickets: bool,
     mut gas_limit: u64,
 ) -> VMResult<u64> {
     let io = &mut context.io;
@@ -92,22 +91,20 @@ fn handle_transaction(
                     .into_iter()
                     .map(|(x, y)| Ticket::new(x, y))
                     .collect();
-                if get_tickets {
-                    context
-                        .io
-                        .write_with_fail(&ServerMessage::TakeTickets(address.address.clone()))
-                        .map_err(|err| VmError::RuntimeErr(err.to_string()))?;
-                    'd: loop {
-                        match context.io.read() {
-                            ClientMessage::GiveTickets(ticket) => {
-                                tickets2.extend(ticket.into_iter().map(|(x, y)| Ticket::new(x, y)));
-                                break 'd;
-                            }
-                            ClientMessage::NoopTransaction => (),
-                            _ => panic!("bad format"),
+                context
+                    .io
+                    .write_with_fail(&ServerMessage::TakeTickets(address.address.clone()))
+                    .map_err(|err| VmError::RuntimeErr(err.to_string()))?;
+                'd: loop {
+                    match context.io.read() {
+                        ClientMessage::GiveTickets(ticket) => {
+                            tickets2.extend(ticket.into_iter().map(|(x, y)| Ticket::new(x, y)));
+                            break 'd;
                         }
+                        ClientMessage::NoopTransaction => (),
+                        _ => panic!("bad format"),
                     }
-                };
+                }
 
                 context.ticket_table.populate(&tickets2);
                 let new_limit =
@@ -387,12 +384,8 @@ fn handle_invoke(
                                 let res = res?;
                                 res.into_iter().try_for_each(|x| {
                                     let transaction = x;
-                                    let new_gas = handle_transaction(
-                                        context,
-                                        transaction,
-                                        true,
-                                        remaining_gas,
-                                    )?;
+                                    let new_gas =
+                                        handle_transaction(context, transaction, remaining_gas)?;
                                     gas_limit = new_gas;
                                     Ok::<(), VmError>(())
                                 })

@@ -1,5 +1,11 @@
 open Helpers
 
+type ticket_id =
+  { ticketer : string
+  ; data : bytes
+  }
+[@@deriving ord, eq, yojson]
+
 module rec V : sig
   type union =
     | Left of t
@@ -16,6 +22,10 @@ module rec V : sig
     | Option of t option
     | Unit
     | Map of t Map.t
+    | Ticket of
+        { ticket_id : ticket_id
+        ; amount : int64
+        }
     | Set of Set.t
   [@@deriving ord, eq, yojson]
 
@@ -36,6 +46,10 @@ end = struct
     | Option of t option
     | Unit
     | Map of t Map.t
+    | Ticket of
+        { ticket_id : ticket_id
+        ; amount : int64
+        }
     | Set of Set.t
   [@@deriving ord, eq, yojson]
 
@@ -78,6 +92,10 @@ end = struct
           pp_print_char fmt map.[c land 0xf])
         b
     | Set s -> print_list pp (List.of_seq (Set.to_seq s))
+    | Ticket t ->
+      fprintf fmt "Pair %s %s %Ld" t.ticket_id.ticketer
+        (Bytes.to_string t.ticket_id.data)
+        t.amount
 end
 
 and Map : (Helpers.Map.S_with_yojson with type key = V.t) =
@@ -87,5 +105,3 @@ and Set : (Helpers.Set.S_with_yojson with type elt = V.t) =
   Helpers.Set.Make_with_yojson (V)
 
 include V
-
-
