@@ -1,10 +1,9 @@
-use serde_json::from_str;
 use vm_library::{
-    arena::{ARENA, TICKETS, INVERSETICKETS},
-    ticket_table::{TicketTable, Ticket, TicketId},
+    arena::{ARENA, TICKETABLE},
     execution_result::ExecutionResult,
     instance::invoke_managed,
     managed::value::{Union, Value},
+    ticket_table::{Ticket, TicketId},
 };
 
 mod common;
@@ -104,18 +103,31 @@ fn buy() {
     )
     .unwrap();
 
-    let invtickets = unsafe { &mut INVERSETICKETS };
-    let ticket = Ticket::new(TicketId::new("KT1WiBZHtvv3EczaN628DkNob4cayHzTEDNK".to_string(), String::new()), 7);
-    invtickets.insert(ticket, 1);
-
-    let arg: Value = serde_json::from_str(r#"["Pair", ["Pair", ["Option", ["String", "tz2AcXz8WUu51YYdE5Rsnosxd1hkhW9tG7pd"]], ["Ticket", {"ticket_id":{"ticketer":"KT1WiBZHtvv3EczaN628DkNob4cayHzTEDNK","data":""},"amount":7,"live":true}]], ["Bytes", "1"]]"#).unwrap();
+    let ticket = Ticket::new(
+        TicketId::new(
+            "KT1WiBZHtvv3EczaN628DkNob4cayHzTEDNK".to_string(),
+            String::new(),
+        ),
+        7,
+    );
+    let tickets: Vec<Ticket> = vec![ticket];
+    let ticket_table = unsafe { &mut TICKETABLE };
+    ticket_table.populate(&tickets);
+    let arg: Value = serde_json::from_str(r#"
+    ["Pair",
+        ["Pair",
+            ["Option", ["String", "tz2AcXz8WUu51YYdE5Rsnosxd1hkhW9tG7pd"]],
+            ["Ticket", {"ticket_id":{"ticketer":"KT1WiBZHtvv3EczaN628DkNob4cayHzTEDNK","data":""},"amount":7,"live":true}]
+        ],
+        ["Bytes", "1"]
+    ]"#).unwrap();
     let bump = arena.insert(arg);
     let arg = Value::Union(Union::Left(bump));
     let bump = arena.insert(arg);
     let arg = Value::Union(Union::Left(bump));
     let (deser, module) = common::deser(payload);
-    let tickets: Vec<Ticket> = vec![];
-    let init = common::create_incoming_managed(&module, &deser, &tickets, 7, arg, storage.clone(), &None);
+    let init =
+        common::create_incoming_managed(&module, &deser, &tickets, 7, arg, storage.clone(), &None);
     let ExecutionResult {
         new_storage,
         ops: _,
@@ -191,14 +203,18 @@ fn update_owner() {
     )
     .unwrap();
 
-    let arg: Value = serde_json::from_str(r#"["Pair", ["Int", "1"], ["String", "tz2AcXz8WUu51YYdE5Rsnosxd1hkhW9tG7pd"]]"#).unwrap();
+    let arg: Value = serde_json::from_str(
+        r#"["Pair", ["Int", "1"], ["String", "tz2AcXz8WUu51YYdE5Rsnosxd1hkhW9tG7pd"]]"#,
+    )
+    .unwrap();
     let bump = arena.insert(arg);
     let arg = Value::Union(Union::Right(bump));
     let bump = arena.insert(arg);
     let arg = Value::Union(Union::Right(bump));
     let (deser, module) = common::deser(payload);
     let tickets: Vec<Ticket> = vec![];
-    let init = common::create_incoming_managed(&module, &deser, &tickets, 0, arg, storage.clone(), &None);
+    let init =
+        common::create_incoming_managed(&module, &deser, &tickets, 0, arg, storage.clone(), &None);
     let ExecutionResult {
         new_storage,
         ops: _,
@@ -281,7 +297,8 @@ fn update_details() {
     let arg = Value::Union(Union::Right(bump));
     let (deser, module) = common::deser(payload);
     let tickets: Vec<Ticket> = vec![];
-    let init = common::create_incoming_managed(&module, &deser, &tickets, 0, arg, storage.clone(), &None);
+    let init =
+        common::create_incoming_managed(&module, &deser, &tickets, 0, arg, storage.clone(), &None);
     let ExecutionResult {
         new_storage,
         ops: _,
@@ -357,14 +374,27 @@ fn skip() {
     )
     .unwrap();
 
-    let arg: Value = serde_json::from_str(r#"["Unit"]"#).unwrap();
+    let ticket = Ticket::new(
+        TicketId::new(
+            "KT1WiBZHtvv3EczaN628DkNob4cayHzTEDNK".to_string(),
+            String::new(),
+        ),
+        6,
+    );
+    let tickets: Vec<Ticket> = vec![ticket];
+    let ticket_table = unsafe { &mut TICKETABLE };
+    ticket_table.populate(&tickets);
+    let arg: Value = serde_json::from_str(r#"
+    ["Ticket", {"ticket_id":{"ticketer":"KT1WiBZHtvv3EczaN628DkNob4cayHzTEDNK","data":""},"amount":6,"live":true}]
+    "#).unwrap();
     let bump = arena.insert(arg);
     let arg = Value::Union(Union::Right(bump));
     let bump = arena.insert(arg);
     let arg = Value::Union(Union::Left(bump));
     let (deser, module) = common::deser(payload);
     let tickets: Vec<Ticket> = vec![];
-    let init = common::create_incoming_managed(&module, &deser, &tickets, 6, arg, storage.clone(), &None);
+    let init =
+        common::create_incoming_managed(&module, &deser, &tickets, 6, arg, storage.clone(), &None);
     let ExecutionResult {
         new_storage,
         ops: _,
