@@ -24,7 +24,7 @@ module rec V : sig
     | Map of t Map.t
     | Ticket of
         { ticket_id : ticket_id
-        ; amount : int64
+        ; amount : Z.t
         }
     | Set of Set.t
   [@@deriving ord, eq, yojson]
@@ -48,7 +48,7 @@ end = struct
     | Map of t Map.t
     | Ticket of
         { ticket_id : ticket_id
-        ; amount : int64
+        ; amount : Z.t
         }
     | Set of Set.t
   [@@deriving ord, eq, yojson]
@@ -93,9 +93,9 @@ end = struct
         b
     | Set s -> print_list pp (List.of_seq (Set.to_seq s))
     | Ticket t ->
-      fprintf fmt "Pair %s %s %Ld" t.ticket_id.ticketer
+      fprintf fmt "Pair %s %s %a" t.ticket_id.ticketer
         (Bytes.to_string t.ticket_id.data)
-        t.amount
+        Z.pp_print t.amount
 end
 
 and Map : (Helpers.Map.S_with_yojson with type key = V.t) =

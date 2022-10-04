@@ -361,7 +361,8 @@ let compile code =
       , get_entrypoints prim )
   | _ -> Error `Unexpected_error
 
-let rec compile_value parsed : (Values.t, [> `Unexpected_error ]) result =
+let rec compile_value ~tickets parsed :
+    (Values.t, [> `Unexpected_error ]) result =
   let open Helpers.Result.Let_syntax in
   let open Values in
   match parsed with
@@ -370,23 +371,23 @@ let rec compile_value parsed : (Values.t, [> `Unexpected_error ]) result =
   | Prim (_, D_True, _, _) -> Ok (Bool 1)
   | Prim (_, D_None, _, _) -> Ok (Option None)
   | Prim (_, D_Some, [ value ], _) ->
-    let* value = compile_value value in
+    let* value = compile_value ~tickets value in
     Ok (Option (Some value))
   | Prim (_, D_Left, [ value ], _) ->
-    let* value = compile_value value in
+    let* value = compile_value ~tickets value in
     Ok (Union (Left value))
   | Prim (_, D_Right, [ value ], _) ->
-    let* value = compile_value value in
+    let* value = compile_value ~tickets value in
     Ok (Union (Right value))
   | Prim (_, D_Pair, fst :: values, _) ->
-    let* fst = compile_value fst in
+    let* fst = compile_value ~tickets fst in
     let[@warning "-8"] values, [ end_ ] =
       Core.List.split_n values (List.length values - 1)
     in
-    let* end_ = compile_value end_ in
+    let* end_ = compile_value ~tickets end_ in
     let snd =
       List.fold_right
-        (fun x acc -> Pair (compile_value x |> Result.get_ok, acc))
+        (fun x acc -> Pair (compile_value ~tickets x |> Result.get_ok, acc))
         values end_
     in
     Ok (Pair (fst, snd))
@@ -394,13 +395,13 @@ let rec compile_value parsed : (Values.t, [> `Unexpected_error ]) result =
   | String (_, s) -> Ok (Values.String s)
   | Bytes (_, b) -> Ok (Values.Bytes b)
   | Seq (_, Prim (_, D_Elt, _, _) :: _) ->
-    compile_map parsed
+    compile_map ~tickets parsed
     (* TODO: sets have the same representation as lists, types should help disambiguate. *)
   | Seq (_, elements) ->
     let rec aux elts =
       match elts with
       | elt :: elts ->
-        let* elt = compile_value elt in
+        let* elt = compile_value ~tickets elt in
         let* lst = aux elts in
         Ok (elt :: lst)
       | [] -> Ok []
@@ -409,17 +410,28 @@ let rec compile_value parsed : (Values.t, [> `Unexpected_error ]) result =
     Ok (Values.List elements)
   | Prim (_, I_EMPTY_MAP, _, _) -> Ok (Map Map.empty)
   | Prim (_, I_EMPTY_SET, _, _) -> Ok (Set Set.empty)
-  | _ -> Error `Unexpected_error
+  | Prim (_, T_ticket, [ fst ], _) ->
+    let* result = compile_value ~tickets fst in
+    let[@warning "-8"] (Pair
+                         ( Values.String ticketer
+                         , Pair (Values.Bytes data, Values.Int amount) )) =
+      result
+    in
+    tickets := ({ ticketer; data }, amount) :: !tickets;
+    Ok (Ticket { ticket_id = { ticketer; data }; amount })
+  | Prim (_, prim, _, _) ->
+    print_endline (Michelson_primitives.string_of_prim prim);
+    Error `Unexpected_error
 
-and compile_map parsed =
+and compile_map ~tickets parsed =
   let open Helpers.Result.Let_syntax in
   match parsed with
   | Seq (_, elements) ->
     let rec aux m elts =
       match elts with
       | Prim (_, D_Elt, [ key; value ], _) :: elts ->
-        let* key = compile_value key in
-        let* value = compile_value value in
+        let* key = compile_value ~tickets key in
+        let* value = compile_value ~tickets value in
         let m = Values.Map.add key value m in
         aux m elts
       | [] -> Ok m
@@ -436,4 +448,6 @@ let compile_value expr =
     | Ok expr -> Ok (root expr)
     | Error (`Parsing_error _ | `Prim_parsing_error _) as err -> err
   in
-  compile_value parsed
+  let tickets = ref [] in
+  let* result = compile_value ~tickets parsed in
+  Ok (!tickets, result)

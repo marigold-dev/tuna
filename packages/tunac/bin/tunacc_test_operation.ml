@@ -8,6 +8,7 @@ let read_file name =
 
 type 'a t =
   { type_ : string
+  ; tickets : (Tunac.Values.ticket_id * Tunac.Helpers.Z.t) list
   ; content : 'a
   }
 [@@deriving yojson]
@@ -27,7 +28,7 @@ type invoke_payload =
 [@@deriving yojson]
 
 let originate contract init =
-  let init = Tunac.Compiler.compile_value init |> Result.get_ok in
+  let tickets, init = Tunac.Compiler.compile_value init |> Result.get_ok in
   let inputs =
     if Core.String.is_suffix ~suffix:"tz" contract then read_file contract
     else contract
@@ -37,6 +38,7 @@ let originate contract init =
   in
   let out = Tunac.Output.make wat constants entrypoints |> Result.get_ok in
   { type_ = "Originate"
+  ; tickets
   ; content =
       { module_ = out.Tunac.Output.module_
       ; constants = out.Tunac.Output.constants
@@ -48,9 +50,9 @@ let originate contract init =
   |> Yojson.Safe.pretty_to_string |> print_endline
 
 let invoke address arg =
-  let init = Tunac.Compiler.compile_value arg |> Result.get_ok in
+  let tickets, init = Tunac.Compiler.compile_value arg |> Result.get_ok in
 
-  { type_ = "Invoke"; content = { address; argument = init } }
+  { type_ = "Invoke"; tickets; content = { address; argument = init } }
   |> yojson_of_t yojson_of_invoke_payload
   |> Yojson.Safe.pretty_to_string |> print_endline
 

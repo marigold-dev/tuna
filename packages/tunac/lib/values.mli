@@ -22,7 +22,7 @@ module rec V : sig
     | Map of t Map.t
     | Ticket of
         { ticket_id : ticket_id
-        ; amount : int64
+        ; amount : Z.t
         }
     | Set of Set.t
   [@@deriving ord, eq, yojson]
