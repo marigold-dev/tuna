@@ -232,7 +232,6 @@ fn handle_invoke(
                     sender: transaction
                         .sender
                         .unwrap_or_else(|| transaction.source.clone()),
-                    amount: 0,
                     self_addr: address.address.clone(),
                     gas_limit,
                 };

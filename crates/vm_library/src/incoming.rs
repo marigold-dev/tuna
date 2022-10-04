@@ -10,7 +10,6 @@ pub struct InvokeManaged<'a> {
     pub tickets: &'a [Ticket],
     pub source: String,
     pub sender: String,
-    pub amount: u32,
     pub self_addr: String,
     pub gas_limit: u64,
 }

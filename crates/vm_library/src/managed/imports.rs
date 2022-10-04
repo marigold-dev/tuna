@@ -1189,7 +1189,7 @@ pub fn make_imports(env: &Context, store: &Store) -> ImportObject {
     );
     exports.insert(
         "amount",
-        Function::new_native_with_env(store, env.clone(), amount),
+        Function::new_native_with_env(store, env.clone(), zero),
     );
     exports.insert(
         "empty_set",
@@ -1249,7 +1249,7 @@ pub fn make_imports(env: &Context, store: &Store) -> ImportObject {
     );
     exports.insert(
         "amount",
-        Function::new_native_with_env(store, env.clone(), amount),
+        Function::new_native_with_env(store, env.clone(), zero),
     );
     exports.insert(
         "self_address",
@@ -1477,17 +1477,6 @@ fn empty_set(c: &Context) -> VMResult<i64> {
         .map_or_else(|| Err(VmError::RuntimeErr("cant happen".to_owned())), Ok)?;
     let bumped = c.bump(nil.clone());
     conversions::to_i64(bumped)
-}
-
-fn amount(c: &Context) -> VMResult<i64> {
-    let predef = unsafe { &PREDEF };
-    let nil = predef
-        .get("amount")
-        .map_or_else(|| Err(VmError::RuntimeErr("can't happen".to_owned())), Ok)?;
-    println!("Got {:?}", nil);
-    let bumped = c.bump(nil.clone());
-    conversions::to_i64(bumped)
-
 }
 
 fn zero(c: &Context) -> VMResult<i64> {

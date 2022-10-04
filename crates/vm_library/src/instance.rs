@@ -28,7 +28,7 @@ pub fn invoke_managed(t: InvokeManaged) -> VMResult<ExecutionResult> {
             call: None,
         })),
     };
-    populate_predef(t.sender, t.amount, t.self_addr, t.source);
+    populate_predef(t.sender, t.self_addr, t.source);
     push_constants(t.constants);
     let store = module.store();
 

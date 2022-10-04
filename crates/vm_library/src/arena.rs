@@ -22,7 +22,7 @@ pub static mut TICKETABLE: Lazy<TicketTable> = Lazy::new(TicketTable::default);
 pub static mut CONSUMEDTICKETS: Lazy<Vec<(TicketId, usize)>> =
     Lazy::new(|| Vec::with_capacity(3000));
 
-pub fn populate_predef(sender: String, amount: u32, self_: String, source: String) {
+pub fn populate_predef(sender: String, self_: String, source: String) {
     let map = unsafe { &mut PREDEF };
     map.clear();
     map.insert("none".to_owned(), Value::Option(None));
@@ -36,7 +36,7 @@ pub fn populate_predef(sender: String, amount: u32, self_: String, source: Strin
     map.insert("empty_set".to_owned(), Value::Set(ordset![]));
     map.insert("empty_map".to_owned(), Value::Map(ordmap! {}));
     map.insert("zero".to_owned(), Value::Int(0.into()));
-    map.insert("amount".to_owned(), Value::Int(amount.into()));
+    map.insert("amount".to_owned(), Value::Int(0.into()));
 }
 pub fn push_constants(vec: Vec<(i32, Value)>) {
     let map = unsafe { &mut CONSTANTS };

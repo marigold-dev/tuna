@@ -32,7 +32,8 @@ fn get_balance() {
     let arg = Value::Union(Union::Left(bump));
     let (deser, module) = common::deser(payload);
     let tickets: Vec<Ticket> = vec![];
-    let init = common::create_incoming_managed(&module, &deser, &tickets, 0, arg, storage.clone(), &None);
+    let init =
+        common::create_incoming_managed(&module, &deser, &tickets, arg, storage.clone(), &None);
     let ExecutionResult {
         new_storage, ops, ..
     } = invoke_managed(init).unwrap();
@@ -71,7 +72,8 @@ fn get_total_supply() {
     let arg = Value::Union(Union::Left(bump));
     let (deser, module) = common::deser(payload);
     let tickets: Vec<Ticket> = vec![];
-    let init = common::create_incoming_managed(&module, &deser, &tickets, 0, arg, storage.clone(), &None);
+    let init =
+        common::create_incoming_managed(&module, &deser, &tickets, arg, storage.clone(), &None);
     let ExecutionResult {
         new_storage, ops, ..
     } = invoke_managed(init).unwrap();
@@ -115,7 +117,8 @@ fn approve() {
     let arg = Value::Union(Union::Left(bump));
     let (deser, module) = common::deser(payload);
     let tickets: Vec<Ticket> = vec![];
-    let init = common::create_incoming_managed(&module, &deser, &tickets, 0, arg, storage.clone(), &None);
+    let init =
+        common::create_incoming_managed(&module, &deser, &tickets, arg, storage.clone(), &None);
     let ExecutionResult { new_storage, .. } = invoke_managed(init).unwrap();
     assert_eq!(
         serde_json::to_string(&new_storage).unwrap(),
@@ -163,7 +166,8 @@ fn transfer() {
     let arg = Value::Union(Union::Right(bump));
     let (deser, module) = common::deser(payload);
     let tickets: Vec<Ticket> = vec![];
-    let init = common::create_incoming_managed(&module, &deser, &tickets, 0, arg, storage.clone(), &None);
+    let init =
+        common::create_incoming_managed(&module, &deser, &tickets, arg, storage.clone(), &None);
     let ExecutionResult { new_storage, .. } = invoke_managed(init).unwrap();
     assert_eq!(
         serde_json::to_string(&new_storage).unwrap(),
@@ -186,7 +190,8 @@ fn get_allowance() {
     let arg = Value::Union(Union::Left(bump));
     let (deser, module) = common::deser(payload);
     let tickets: Vec<Ticket> = vec![];
-    let init = common::create_incoming_managed(&module, &deser, &tickets, 0, arg, storage.clone(), &None);
+    let init =
+        common::create_incoming_managed(&module, &deser, &tickets, arg, storage.clone(), &None);
     let ExecutionResult {
         new_storage, ops, ..
     } = invoke_managed(init).unwrap();
