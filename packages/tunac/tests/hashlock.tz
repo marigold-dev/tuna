@@ -2,9 +2,18 @@
     (or (bytes %commit)
         (pair %reveal (bytes %hashable) (lambda %message unit (list operation)))) ;
   storage
-    (pair (pair (big_map %commits address (pair (timestamp %date) (bytes %salted_hash)))
-                (bytes %hashed))
-          (bool %unused)) ;
+    (pair
+      (pair
+        (big_map %commits address
+          (pair
+            (timestamp %date)
+            (bytes %salted_hash)
+          )
+        )
+        (bytes %hashed)
+      )
+      (bool %unused)
+    ) ;
   code { UNPAIR ;
          IF_LEFT
            { PUSH int 86400 ;
