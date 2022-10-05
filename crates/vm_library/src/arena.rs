@@ -37,6 +37,7 @@ pub fn populate_predef(sender: String, self_: String, source: String) {
     map.insert("empty_map".to_owned(), Value::Map(ordmap! {}));
     map.insert("zero".to_owned(), Value::Int(0.into()));
     map.insert("amount".to_owned(), Value::Int(0.into()));
+    map.insert("now".to_owned(), Value::Int(0.into()));
 }
 pub fn push_constants(vec: Vec<(i32, Value)>) {
     let map = unsafe { &mut CONSTANTS };

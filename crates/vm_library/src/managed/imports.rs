@@ -1184,6 +1184,10 @@ pub fn make_imports(env: &Context, store: &Store) -> ImportObject {
         Function::new_native_with_env(store, env.clone(), call3(transfer_tokens)),
     );
     exports.insert(
+        "now",
+        Function::new_native_with_env(store, env.clone(), now),
+    );
+    exports.insert(
         "nil",
         Function::new_native_with_env(store, env.clone(), nil),
     );
@@ -1421,6 +1425,14 @@ fn read_ticket(env: &Context, payload: Value) -> VMResult<()> {
             "cant mint ticket, wrong values supplied".to_owned(),
         )),
     }
+}
+fn now(c: &Context) -> VMResult<i64> {
+    let predef = unsafe { &PREDEF };
+    let now = predef
+        .get("now")
+        .map_or_else(|| Err(VmError::RuntimeErr("cant happen".to_owned())), Ok)?;
+    let bumped = c.bump(now.clone());
+    conversions::to_i64(bumped)
 }
 fn nil(c: &Context) -> VMResult<i64> {
     let predef = unsafe { &PREDEF };
