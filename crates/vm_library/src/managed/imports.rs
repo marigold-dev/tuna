@@ -1,5 +1,6 @@
 use std::ops::{Add, BitOr, BitXor, Mul, Neg, Sub};
 
+use ed25519::signature::Verifier;
 use im_rc::{OrdSet, Vector};
 use rug::Integer;
 use slotmap::{DefaultKey, Key, KeyData};
@@ -530,9 +531,10 @@ pub fn neg(env: &Context, value: Value) -> VMResult<i64> {
         .into()),
     }
 }
-use blake2::digest::consts::U32;
+use blake2::digest::consts::{U32, U20};
 use blake2::Digest;
 pub type Blake2b256 = blake2::Blake2b<U32>;
+type Blake2b160 = blake2::Blake2b<U20>;
 
 fn blake2b(env: &Context, value: Value) -> VMResult<i64> {
     env.update_gas(300)?;
@@ -1300,6 +1302,15 @@ pub fn make_imports(env: &Context, store: &Store) -> ImportObject {
         "join_tickets",
         Function::new_native_with_env(store, env.clone(), call1(join_tickets)),
     );
+    exports.insert(
+        "hash_key",
+        Function::new_native_with_env(store, env.clone(), call1(hash_key))
+    );
+    exports.insert(
+        "check_signature",
+        Function::new_native_with_env(store, env.clone(), call3(check_signature))
+    );
+
     imports.register("env", exports);
     imports
 }
@@ -1722,4 +1733,190 @@ fn contract(c: &Context, v: i64) -> VMResult<i64> {
 
     let conved = conversions::to_i64(bumped)?;
     Ok(conved)
+}
+
+fn hash_key(c: &Context, key: Value) -> VMResult<i64> {
+    let key =
+        match key {
+            Value::String(s) => Ok(s),
+            _ => Err(VmError::RuntimeErr("Illegal argument".to_owned()))
+        }?;
+
+    let prefix: Vec<u8> =
+        match &key[0..2] {
+            "ed" => Ok(vec![6, 161, 159]),
+            "sp" => Ok(vec![6, 161, 161]),
+            "p2" => Ok(vec![6, 161, 164]),
+            _ => Err(VmError::ExternErr("Invalid key prefix".to_owned()))
+        }?;
+
+    let key_hash = {
+        let decoded = bs58::decode(&key)
+            .with_check(None)
+            .into_vec()
+            .expect("Should not fail");
+        let mut digest = Blake2b160::new();
+        digest.update(&decoded[4..decoded.len()].to_vec());
+        digest.finalize()
+    };
+
+    let encoded = {
+        let mut payload: Vec<u8> = prefix;
+        payload.append(&mut key_hash.to_vec());
+        bs58::encode(&payload)
+            .with_check()
+            .into_string()
+    };
+
+    let value = Value::String(encoded);
+    let bumped = c.bump(value);
+    Ok(conversions::to_i64(bumped)?)
+}
+
+fn check_signature(c: &Context, key: Value, signature: Value, signed: Value) -> VMResult<i64> {
+    let key =
+        match key {
+            Value::String(s) => {
+                let value = bs58::decode(&s)
+                    .with_check(None)
+                    .into_vec()
+                    .unwrap();
+
+                Ok(ring_compat::signature::ed25519::VerifyingKey::new(&value[4..]).unwrap())
+            },
+            _ => Err(VmError::RuntimeErr("Illegal argument".to_owned()))
+        }?;
+    
+    let signature =
+        match signature {
+            Value::String(s) => {
+                let value = bs58::decode(&s)
+                    .with_check(None)
+                    .into_vec()
+                    .unwrap();
+                
+                Ok(ed25519::Signature::from_bytes(&value[5..]).unwrap())
+            },
+            _ => Err(VmError::RuntimeErr("Illegal argument".to_owned()))
+        }?;
+
+    let signed =
+        match signed {
+            Value::Bytes(b) => Ok(b),
+            _ => Err(VmError::RuntimeErr("Illegal argument".to_owned()))
+        }?;
+
+    let valid = key.verify(signed.as_slice(), &signature).is_ok();
+    let bumped = c.bump(Value::Bool(valid));
+    Ok(conversions::to_i64(bumped)?)
+}
+
+
+#[cfg(test)]
+mod test {
+    use super::{hash_key, check_signature};
+    use super::super::value::*;
+    use crate::{
+        env::{Context, Inner},
+        // errors::{ffi::FFIError, vm::VmError, VMResult},
+    };
+    use std::{cell::RefCell, rc::Rc};
+    use slotmap::{DefaultKey, KeyData};
+
+    #[test]
+    fn test_hash_key() {
+        let value = {
+            let env = Context {
+                inner: Rc::new(RefCell::new(Inner {
+                    instance: None,
+                    pusher: None,
+                    gas_limit: 10000,
+                    call_unit: None,
+                    call: None,
+                })),
+            };
+            let key = Value::String("edpkuAiM2L4jbVkHepGcFeFeWNiLe5RBMWo3zPav6nHto2KGEueT5m".to_owned());
+            let id= hash_key(&env, key).unwrap();
+            env.get(DefaultKey::from(KeyData::from_ffi(id as u64))).unwrap()
+        };
+        assert_eq!(value, Value::String("tz1f4tGuUETs9eB1LaA2TjW6FiEhhrqv7vsA".to_owned()));
+
+
+        let value = {
+            let env = Context {
+                inner: Rc::new(RefCell::new(Inner {
+                    instance: None,
+                    pusher: None,
+                    gas_limit: 10000,
+                    call_unit: None,
+                    call: None,
+                })),
+            };
+            let key = Value::String("sppk7aff7zpbQuxvfFyyTFExdFGZXMSXZsJcSo7eV4Vpsdvunk9LD2X".to_owned());
+            let id= hash_key(&env, key).unwrap();
+            env.get(DefaultKey::from(KeyData::from_ffi(id as u64))).unwrap()
+        };
+        assert_eq!(value, Value::String("tz2NhM2PDsZn3SXjiSzAMbYcaqRJnTTprFW3".to_owned()));
+
+
+        let value = {
+            let env = Context {
+                inner: Rc::new(RefCell::new(Inner {
+                    instance: None,
+                    pusher: None,
+                    gas_limit: 10000,
+                    call_unit: None,
+                    call: None,
+                })),
+            };
+            let key = Value::String("p2pk66AEx2nY3o5gWqmREqyiz7P6smWdVAuKDkXPrGGj2GNsG7pGFSK".to_owned());
+            let id= hash_key(&env, key).unwrap();
+            env.get(DefaultKey::from(KeyData::from_ffi(id as u64))).unwrap()
+        };
+        assert_eq!(value, Value::String("tz3ZLEdrrDA86nz9Ze5aRq9DrqhJjxccRoyi".to_owned()));        
+    }
+
+    #[test]
+    fn test_check_signature() {
+        let key = Value::String("edpkvNgxSqGnjXG8vqC4QsdbWUxzNrbUkVrZEEPcG7TLgGPJVXHaqX".to_owned());
+        let signature = Value::String("edsigu1C2dvStuBMusohUx2JmoEtniUxBtTovM7wnHpDRmGhQ6QQu79KVQqDj4v7jZL1DFoZv7zVZEUHAbdsKenEtRg74WkP91X".to_owned());
+        let signed = Value::Bytes(vec![0xa2, 0x1c, 0xf4, 0xb3, 0x60, 0x4c, 0xf4, 0xb2, 0xbc, 0x53, 0xe6, 0xf8, 0x8f, 0x6a, 0x4d, 0x75, 0xef, 0x5f, 0xf4, 0xab, 0x41, 0x5f, 0x3e, 0x99, 0xae, 0xa6, 0xb6, 0x1c, 0x82, 0x49, 0xc4, 0xd0]);
+
+        let value = {
+            let env = Context {
+                inner: Rc::new(RefCell::new(Inner {
+                    instance: None,
+                    pusher: None,
+                    gas_limit: 10000,
+                    call_unit: None,
+                    call: None,
+                })),
+            };
+            let id = check_signature(&env, key, signature, signed).unwrap();
+            env.get(DefaultKey::from(KeyData::from_ffi(id as u64))).unwrap()
+        };
+        assert_eq!(value, Value::Bool(true));
+
+
+
+        let key = Value::String("edpkvNgxSqGnjXG8vqC4QsdbWUxzNrbUkVrZEEPcG7TLgGPJVXHaqX".to_owned());
+        let signature = Value::String("edsigtom5RhLgGJ2dTcenSUQMmiZAHESiXTA9rLYYaDDqhsNzYsp8FtiBUPjEDRHGquwnrbnGXt3yKnad5Ctkh6Vnx6rAAmVbqh".to_owned());
+        let signed = Value::Bytes(vec![0xa2, 0x1c, 0xf4, 0xb3, 0x60, 0x4c, 0xf4, 0xb2, 0xbc, 0x53, 0xe6, 0xf8, 0x8f, 0x6a, 0x4d, 0x75, 0xef, 0x5f, 0xf4, 0xab, 0x41, 0x5f, 0x3e, 0x99, 0xae, 0xa6, 0xb6, 0x1c, 0x82, 0x49, 0xc4, 0xd0]);
+
+        let value = {
+            let env = Context {
+                inner: Rc::new(RefCell::new(Inner {
+                    instance: None,
+                    pusher: None,
+                    gas_limit: 10000,
+                    call_unit: None,
+                    call: None,
+                })),
+            };
+            let id = check_signature(&env, key, signature, signed).unwrap();
+            env.get(DefaultKey::from(KeyData::from_ffi(id as u64))).unwrap()
+        };
+        assert_eq!(value, Value::Bool(false));
+    }
+
 }
