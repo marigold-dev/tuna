@@ -66,7 +66,7 @@ struct ServerVisitor;
 impl<'de> Visitor<'de> for ServerVisitor {
     type Value = ServerMessage;
     fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
-        formatter.write_str("Expected a valid Value")
+        formatter.write_str("Expected a valid ServerMessage")
     }
     fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
     where

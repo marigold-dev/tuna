@@ -13,13 +13,10 @@ use crate::{
 pub struct ContractType {
     pub self_: ContractAddress,
     pub originated_by: String,
-    #[serde(with = "serde_bytes")]
     pub storage: Vec<u8>,
     #[serde(skip_deserializing, skip_serializing)]
     pub module: Option<Box<Module>>,
-    #[serde(with = "serde_bytes")]
     pub serialized_module: Vec<u8>,
-    #[serde(with = "serde_bytes")]
     pub constants: Vec<u8>,
     pub entrypoints: Option<FnvHashMap<String, Vec<Path>>>,
 }

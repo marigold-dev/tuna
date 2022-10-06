@@ -146,9 +146,10 @@ fn handle_transaction(
         }?;
         Ok::<u64, VmError>(gas_limit)
     } else {
-        io.write(&ServerMessage::Error(
-            "bad operation, failed to parse operation".to_owned(),
-        ));
+        io.write(&ServerMessage::Error(format!(
+            "bad operation, failed to parse operation, {}",
+            &transaction.operation
+        )));
         Err(VmError::DeserializeErr("Bad transaction".to_owned()))
     }
 }
@@ -169,12 +170,13 @@ fn handle_originate(
     let contract_type = ContractType {
         self_: addr.clone(),
         originated_by,
-        storage: bincode::serialize(&initial_storage).expect("error"),
+        storage: serde_json::to_vec(&initial_storage).expect("error"),
         module: Some(Box::from(module)),
         serialized_module: serialized,
-        constants: bincode::serialize(&constants).expect("error"),
+        constants: serde_json::to_vec(&constants).expect("error"),
         entrypoints,
     };
+
     let msg = &ServerMessage::Set(SetOwned {
         key: addr.address.clone(),
         value: contract_type.clone(),
@@ -209,9 +211,9 @@ fn handle_invoke(
                 let mut contract = contract;
                 contract.init()?;
                 let initial_storage: Value =
-                    bincode::deserialize(&contract.storage).expect("error");
+                    serde_json::from_slice(&contract.storage).expect("error");
                 let constantst: Vec<(i32, Value)> =
-                    bincode::deserialize(&contract.constants).expect("error");
+                    serde_json::from_slice(&contract.constants).expect("error");
                 let invoke_payload = InvokeManaged {
                     mod_: (contract.module.as_ref().unwrap()),
                     arg,
@@ -242,7 +244,7 @@ fn handle_invoke(
                         gas_limit = remaining_gas;
                         context.ticket_table.finalize();
                         let serialized_storage =
-                            bincode::serialize(&new_storage).expect("serialization_error");
+                            serde_json::to_vec(&new_storage).expect("serialization_error");
                         {
                             let deposit = unsafe { &mut CONSUMEDTICKETS };
                             let address = contract_addr_to_string(&address);

@@ -90,8 +90,8 @@ pub fn init(path: String) -> IO {
 }
 pub fn originate(operation: String) -> impl FnMut(&mut IO) {
     let t = Transaction {
-        source: "test".to_string(),
-        sender: Some("test".to_string()),
+        source: "tz1gvF4cD2dDtqitL3ZTraggSR1Mju2BKFEM".to_string(),
+        sender: Some("tz1gvF4cD2dDtqitL3ZTraggSR1Mju2BKFEM".to_string()),
         operation,
         operation_raw_hash: "test".to_string(),
         tickets: vec![],
@@ -104,7 +104,9 @@ pub fn originate(operation: String) -> impl FnMut(&mut IO) {
         loop {
             match io.read() {
                 ServerMessage::DepositTickets(_) => continue,
-                ServerMessage::Set(SetOwned { key: _, value: _ }) => continue,
+                ServerMessage::Set(SetOwned { key: _, value: _ }) => {
+                    continue;
+                }
                 ServerMessage::Stop => break,
                 _ => todo!(),
             }
@@ -113,14 +115,16 @@ pub fn originate(operation: String) -> impl FnMut(&mut IO) {
 }
 pub fn invoke(operation: String) -> impl FnMut(&mut IO) {
     let t = Transaction {
-        source: "test".to_string(),
-        sender: Some("test".to_string()),
+        source: "tz1gvF4cD2dDtqitL3ZTraggSR1Mju2BKFEM".to_string(),
+        sender: Some("tz1gvF4cD2dDtqitL3ZTraggSR1Mju2BKFEM".to_string()),
         operation,
         operation_raw_hash: "test".to_string(),
         tickets: vec![],
     };
     let msg =
         serde_json::to_string(&ClientMessage::Transaction(t)).expect("Failed to write to pipe");
+    let tickets = serde_json::to_string(&ClientMessage::GiveTickets(vec![]))
+        .expect("Failed to write to pipe");
 
     move |io| {
         io.write(msg.as_bytes());
@@ -129,7 +133,12 @@ pub fn invoke(operation: String) -> impl FnMut(&mut IO) {
                 ServerMessage::DepositTickets(_) => continue,
                 ServerMessage::Set(SetOwned { key: _, value: _ }) => (),
                 ServerMessage::Stop => break,
-                _ => todo!(),
+                ServerMessage::Error(s) => {
+                    dbg!(s);
+                    todo!()
+                }
+                ServerMessage::TakeTickets(_) => io.write(tickets.as_bytes()),
+                _ => continue,
             }
         }
     }

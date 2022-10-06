@@ -222,7 +222,7 @@ impl<'de> Visitor<'de> for ValueVisitor {
                     elem.map_or_else(
                         || {
                             Err(serde::de::Error::invalid_type(
-                                serde::de::Unexpected::Str("unexpected sequence"),
+                                serde::de::Unexpected::Str("unexpected sequence, expected bool"),
                                 &"value",
                             ))
                         },
@@ -238,7 +238,7 @@ impl<'de> Visitor<'de> for ValueVisitor {
                     elem.map_or_else(
                         || {
                             Err(serde::de::Error::invalid_type(
-                                serde::de::Unexpected::Str("unexpected sequence"),
+                                serde::de::Unexpected::Str("unexpected sequence, expected int"),
                                 &self,
                             ))
                         },
@@ -251,7 +251,7 @@ impl<'de> Visitor<'de> for ValueVisitor {
                     elem.map_or_else(
                         || {
                             Err(serde::de::Error::invalid_type(
-                                serde::de::Unexpected::Str("unexpected sequence"),
+                                serde::de::Unexpected::Str("unexpected sequence,expected bytes"),
                                 &self,
                             ))
                         },
@@ -263,7 +263,7 @@ impl<'de> Visitor<'de> for ValueVisitor {
                     elem.map_or_else(
                         || {
                             Err(serde::de::Error::invalid_type(
-                                serde::de::Unexpected::Str("unexpected sequence"),
+                                serde::de::Unexpected::Str("unexpected sequence,expected string"),
                                 &self,
                             ))
                         },
@@ -275,7 +275,7 @@ impl<'de> Visitor<'de> for ValueVisitor {
                     elem.map_or_else(
                         || {
                             Err(serde::de::Error::invalid_type(
-                                serde::de::Unexpected::Str("unexpected sequence"),
+                                serde::de::Unexpected::Str("unexpected sequence, expected union"),
                                 &"test",
                             ))
                         },
@@ -306,7 +306,7 @@ impl<'de> Visitor<'de> for ValueVisitor {
                     elem.map_or_else(
                         || {
                             Err(serde::de::Error::invalid_type(
-                                serde::de::Unexpected::Str("unexpected structure in list"),
+                                serde::de::Unexpected::Str("unexpected structure in ticket"),
                                 &"Value enum",
                             ))
                         },
@@ -347,17 +347,20 @@ impl<'de> Visitor<'de> for ValueVisitor {
                     let elem1 = elem1.map_or_else(
                         || {
                             Err(serde::de::Error::invalid_type(
-                                serde::de::Unexpected::Str("unexpected sequence"),
+                                serde::de::Unexpected::Str(
+                                    "unexpected sequence, expected 1st pair element",
+                                ),
                                 &self,
                             ))
                         },
                         |v| Ok(arena.insert(v)),
                     )?;
-                    let elem2 = seq.next_element::<Value>()?;
+
+                    let elem2 = seq.next_element()?;
                     let elem2 = elem2.map_or_else(
                         || {
-                            Err(serde::de::Error::invalid_type(
-                                serde::de::Unexpected::Str("unexpected sequence"),
+                            Err(serde::de::Error::invalid_value(
+                                serde::de::Unexpected::Str("unxpected value in second pair elem"),
                                 &self,
                             ))
                         },
@@ -368,13 +371,12 @@ impl<'de> Visitor<'de> for ValueVisitor {
                         snd: elem2,
                     })
                 }
-
                 "Option" => {
                     let elem = seq.next_element::<Option<Value>>()?;
                     elem.map_or_else(
                         || {
                             Err(serde::de::Error::invalid_type(
-                                serde::de::Unexpected::Str("unexpected sequence"),
+                                serde::de::Unexpected::Str("unexpected sequence, expected option"),
                                 &"value",
                             ))
                         },
@@ -384,9 +386,9 @@ impl<'de> Visitor<'de> for ValueVisitor {
                         },
                     )
                 }
-                _ => Err(serde::de::Error::invalid_type(
-                    serde::de::Unexpected::Str("unexpected sequence"),
-                    &"value",
+                x => Err(serde::de::Error::invalid_type(
+                    serde::de::Unexpected::Str("unexpected sequence, expected valid type"),
+                    &x,
                 )),
             },
         )
@@ -495,11 +497,11 @@ impl Serialize for Value {
                 let value1 = arena
                     .get(*fst)
                     .map_or_else(|| Err(serde::ser::Error::custom(&"error serializing")), Ok)?;
+
+                seq.serialize_element(value1)?;
                 let value2 = arena
                     .get(*snd)
                     .map_or_else(|| Err(serde::ser::Error::custom(&"error serializing")), Ok)?;
-                seq.serialize_element(value1)?;
-
                 seq.serialize_element(value2)?;
                 seq.end()
             }
