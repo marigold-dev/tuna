@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 use fnv::FnvHashMap;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
@@ -9,6 +11,13 @@ pub struct SetOwned {
     #[serde(serialize_with = "base64ser", deserialize_with = "base64deser")]
     pub value: ContractType,
 }
+#[derive(Debug, Serialize)]
+pub struct SetBorrowed<'a> {
+    pub key: &'a str,
+    #[serde(serialize_with = "base64ser")]
+    pub value: &'a Cow<'a, ContractType>,
+}
+
 fn base64ser<S>(t: &ContractType, serializer: S) -> Result<S::Ok, S::Error>
 where
     S: Serializer,

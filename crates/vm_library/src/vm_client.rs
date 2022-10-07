@@ -3,24 +3,26 @@ use serde::{de::Visitor, ser::SerializeTuple, Deserialize, Serialize};
 
 use crate::{
     contract_address::ContractAddress,
-    managed::value::Value,
+    managed::value::FromOcamlV,
     outgoing::{Init, SetOwned},
     path::Path,
+    state::LigoCode,
     ticket_table::TicketId,
 };
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(tag = "type_", content = "content")]
 pub enum Operation {
-    Originate {
+    OriginateManaged {
         module_: String,
-        constants: Vec<(u32, Value)>,
-        initial_storage: Value,
+        constants: Vec<(u32, FromOcamlV)>,
+        initial_storage: FromOcamlV,
         entrypoints: Option<FnvHashMap<String, Vec<Path>>>,
+        source: Option<LigoCode>,
     },
-    Invoke {
+    InvokeManaged {
         address: ContractAddress,
-        argument: Value,
+        argument: FromOcamlV,
         #[serde(default = "def")]
         gas_limit: u64,
     },
