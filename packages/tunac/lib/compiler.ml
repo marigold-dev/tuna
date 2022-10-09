@@ -223,6 +223,10 @@ let rec compile_instruction ~ctx instruction =
     Printf.sprintf "%s (; \"%s\" ;)" (compile_constant ~ctx (Values.String s)) s
   | Prim (_, I_PUSH, [ _; Bytes (_, b) ], _) ->
     compile_constant ~ctx (Values.Bytes b)
+  | Prim (_, I_PUSH, [ _; Prim (_, D_False, [], _) ], _) ->
+    compile_constant ~ctx (Values.Bool 0)
+  | Prim (_, I_PUSH, [ _; Prim (_, D_True, [], _) ], _) ->
+    compile_constant ~ctx (Values.Bool 1)
   | Prim (_, I_LAMBDA, [ _; _; Seq (_, body) ], _) ->
     let name = gen_symbol ~ctx "$lambda" in
     let lambda = compile_lambda ~ctx ~unit:false name body in

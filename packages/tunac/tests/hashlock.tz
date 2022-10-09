@@ -1,0 +1,98 @@
+{ parameter
+    (or (bytes %commit)
+        (pair %reveal (bytes %hashable) (lambda %message unit (list operation)))) ;
+  storage
+    (pair
+      (pair
+        (big_map %commits address
+          (pair
+            (timestamp %date)
+            (bytes %salted_hash)
+          )
+        )
+        (bytes %hashed)
+      )
+      (bool %unused)
+    ) ;
+  code { UNPAIR ;
+         IF_LEFT
+           { PUSH int 86400 ;
+             NOW ;
+             ADD ;
+             PAIR ;
+             DUP 2 ;
+             CAR ;
+             CAR ;
+             SWAP ;
+             SOME ;
+             SENDER ;
+             PAIR 3 ;
+             DUP 2 ;
+             CDR ;
+             DIG 2 ;
+             CAR ;
+             CDR ;
+             DIG 2 ;
+             UNPAIR 3 ;
+             UPDATE ;
+             PAIR ;
+             PAIR ;
+             NIL operation ;
+             PAIR }
+           { DUP 2 ;
+             CDR ;
+             NOT ;
+             IF { DROP 2 ; PUSH string "This contract has already been used." ; FAILWITH }
+                { DUP 2 ;
+                  CAR ;
+                  CAR ;
+                  SENDER ;
+                  GET ;
+                  IF_NONE
+                    { PUSH string "You have not made a commitment to hash against yet." ;
+                      FAILWITH }
+                    {} ;
+                  DUP ;
+                  CAR ;
+                  NOW ;
+                  COMPARE ;
+                  LT ;
+                  IF { DROP 3 ;
+                       PUSH string "It has not been 24 hours since your commit yet." ;
+                       FAILWITH }
+                     { SENDER ;
+                       PACK ;
+                       DUP 3 ;
+                       CAR ;
+                       CONCAT ;
+                       SHA256 ;
+                       SWAP ;
+                       CDR ;
+                       SWAP ;
+                       COMPARE ;
+                       NEQ ;
+                       IF { DROP 2 ;
+                            PUSH string "This reveal does not match your commitment." ;
+                            FAILWITH }
+                          { DUP ;
+                            CAR ;
+                            SHA256 ;
+                            DUP 3 ;
+                            CAR ;
+                            CDR ;
+                            COMPARE ;
+                            EQ ;
+                            IF { PUSH bool False ;
+                                 DIG 2 ;
+                                 CAR ;
+                                 PAIR ;
+                                 UNIT ;
+                                 DIG 2 ;
+                                 CDR ;
+                                 SWAP ;
+                                 EXEC ;
+                                 PAIR }
+                               { DROP 2 ;
+                                 PUSH string "Your commitment did not match the storage hash." ;
+                                 FAILWITH } } } } } } }
+

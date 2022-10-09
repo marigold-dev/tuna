@@ -96,11 +96,10 @@ pub fn neq(env: &Context, value: Value) -> VMResult<i64> {
 
 pub fn eq(env: &Context, value: Value) -> VMResult<i64> {
     env.update_gas(300)?;
-    let one: rug::Integer = rug::Integer::from(1);
 
     let res: VMResult<Value> = match value {
-        Value::Int(n) if n == Integer::ZERO => Ok(false),
-        Value::Int(n) if n == one => Ok(true),
+        Value::Int(n) if n == Integer::ZERO => Ok(true),
+        Value::Int(_) => Ok(false),
 
         _ => Err(FFIError::ExternError {
             value: (value).clone(),
@@ -893,6 +892,7 @@ pub fn get_and_update(env: &Context, key: Value, value: Value, map: Value) -> VM
         .into()),
     }
 }
+
 pub const fn call1<A, F>(f: F) -> impl Fn(&Context, i64) -> VMResult<A>
 where
     F: Fn(&Context, Value) -> VMResult<A>,
@@ -1184,6 +1184,10 @@ pub fn make_imports(env: &Context, store: &Store) -> ImportObject {
         Function::new_native_with_env(store, env.clone(), call3(transfer_tokens)),
     );
     exports.insert(
+        "now",
+        Function::new_native_with_env(store, env.clone(), now),
+    );
+    exports.insert(
         "nil",
         Function::new_native_with_env(store, env.clone(), nil),
     );
@@ -1421,6 +1425,14 @@ fn read_ticket(env: &Context, payload: Value) -> VMResult<()> {
             "cant mint ticket, wrong values supplied".to_owned(),
         )),
     }
+}
+fn now(c: &Context) -> VMResult<i64> {
+    let predef = unsafe { &PREDEF };
+    let now = predef
+        .get("now")
+        .map_or_else(|| Err(VmError::RuntimeErr("cant happen".to_owned())), Ok)?;
+    let bumped = c.bump(now.clone());
+    conversions::to_i64(bumped)
 }
 fn nil(c: &Context) -> VMResult<i64> {
     let predef = unsafe { &PREDEF };
