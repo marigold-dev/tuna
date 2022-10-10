@@ -150,7 +150,7 @@ pub fn unpair(env: &Context, value: Value) -> VMResult<()> {
         }
         _ => Err(FFIError::ExternError {
             value: (value),
-            msg: "type mismatch, expected Pair".to_owned(),
+            msg: "unpair, type mismatch, expected Pair".to_owned(),
         }
         .into()),
     }
@@ -161,7 +161,7 @@ pub fn car(env: &Context, value: Value) -> VMResult<i64> {
         Value::Pair { fst, snd: _ } => conversions::to_i64(fst.data().as_ffi()),
         _ => Err(FFIError::ExternError {
             value: (value),
-            msg: "type mismatch, expected Pair".to_owned(),
+            msg: "car, type mismatch, expected Pair".to_owned(),
         }
         .into()),
     }
@@ -172,7 +172,7 @@ pub fn cdr(env: &Context, value: Value) -> VMResult<i64> {
         Value::Pair { fst: _, snd } => conversions::to_i64(snd.data().as_ffi()),
         _ => Err(FFIError::ExternError {
             value: (value),
-            msg: "type mismatch, expected Pair".to_owned(),
+            msg: "cdr, type mismatch, expected Pair".to_owned(),
         }
         .into()),
     }
@@ -779,7 +779,7 @@ pub fn get_n(env: &Context, idx: u32, value: Value) -> VMResult<i64> {
             (_, value) => {
                 return Err(FFIError::ExternError {
                     value: (value),
-                    msg: "type mismatch, expected Pair".to_owned(),
+                    msg: "get_n, type mismatch, expected Pair".to_owned(),
                 }
                 .into())
             }

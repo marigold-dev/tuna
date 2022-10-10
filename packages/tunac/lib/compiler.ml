@@ -36,6 +36,15 @@ let compile_constant ~ctx value =
 let rec compile_instruction ~ctx instruction =
   match instruction with
   | Prim (_, I_UNPAIR, _, _) -> "(call $unpair (call $pop)) ;; implicit return"
+  | Prim (_, I_PAIR, [ Int (_, x) ], _) ->
+    let int = Z.to_int x - 2 in
+    let rec go num acc =
+      if num = 0 then acc
+      else
+        go (num - 1)
+          (acc ^ "\n" ^ "(call $push (call $pair (call $pop) (call $pop)))")
+    in
+    go int "(call $push (call $pair (call $pop) (call $pop)))"
   | Prim (_, I_PAIR, _, _) ->
     "(call $push (call $pair (call $pop) (call $pop)))"
   | Prim (_, I_ADD, _, _) ->
@@ -327,7 +336,8 @@ let compile code =
   let* parsed =
     match Parser.parse_expr code with
     | Ok expr -> Ok (root expr)
-    | (Error (`Parsing_error _) | Error (`Prim_parsing_error _)) as x -> x
+    | (Error (`Parsing_error _) | Error (`Prim_parsing_error _)) as x ->
+      x
   in
   match parsed with
   | Seq
