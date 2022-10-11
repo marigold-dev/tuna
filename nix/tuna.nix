@@ -1,7 +1,9 @@
 {
   nix-filter,
   lib,
-  buildDunePackage,
+  stdenv,
+  dune,
+  ocaml,
   zarith,
   ppx_deriving,
   ppx_yojson_conv,
@@ -14,8 +16,9 @@
   ppx_jane,
   alcotest,
 }:
-buildDunePackage rec {
-  pname = "tunac";
+
+stdenv.mkDerivation rec {
+  name = "tunac";
   version = "1.0.0";
 
   src = with nix-filter.lib; filter {
@@ -29,6 +32,11 @@ buildDunePackage rec {
     ];
   };
 
+  nativeBuildInputs = [
+    dune
+    ocaml
+  ];
+
   propagatedBuildInputs = [
     zarith
     ppx_deriving
@@ -40,9 +48,9 @@ buildDunePackage rec {
 
   buildInputs = [
     yojson
-   core
-  core_unix
-  ppx_jane
+    core
+    core_unix
+    ppx_jane
   ];
 
   checkInputs = [
@@ -51,5 +59,16 @@ buildDunePackage rec {
 
   doCheck = true;
 
-  meta.mainProgram = "tunacc_test_operation";
+  buildPhase = ''
+    runHook preBuild
+    dune build --profile=release ./packages/tunac/bin/tunacc_test_operation.exe
+    runHook postBuild
+  '';
+
+  installPhase = ''
+    runHook preInstall
+    mkdir -p $out/lib $out/bin
+    cp _build/default/packages/tunac/bin/tunacc_test_operation.exe $out/bin/tunac
+    runHook postInstall
+  '';
 }
