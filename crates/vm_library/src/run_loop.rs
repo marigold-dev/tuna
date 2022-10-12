@@ -95,16 +95,16 @@ fn handle_transaction(
                     .io
                     .write_with_fail(&ServerMessage::TakeTickets(address.address.clone()))
                     .map_err(|err| VmError::RuntimeErr(err.to_string()))?;
-                'd: loop {
-                    match context.io.read() {
-                        ClientMessage::GiveTickets(ticket) => {
-                            tickets2.extend(ticket.into_iter().map(|(x, y)| Ticket::new(x, y)));
-                            break 'd;
-                        }
-                        ClientMessage::NoopTransaction => (),
-                        _ => panic!("bad format"),
-                    }
-                }
+                // 'd: loop {
+                //     match context.io.read() {
+                //         ClientMessage::GiveTickets(ticket) => {
+                //             tickets2.extend(ticket.into_iter().map(|(x, y)| Ticket::new(x, y)));
+                //             break 'd;
+                //         }
+                //         ClientMessage::NoopTransaction => (),
+                //         _ => panic!("bad format"),
+                //     }
+                // }
 
                 context.ticket_table.populate(&tickets2);
                 let new_limit =
