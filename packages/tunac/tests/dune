@@ -4,6 +4,6 @@
   ../bin/tunacc_test_operation.exe
   (glob_files ./**.tz)))
 
-(test
- (name compile_value)
+(tests
+ (names compile_value compile_contract)
  (libraries tunac alcotest))
