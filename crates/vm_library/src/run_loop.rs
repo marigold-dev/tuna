@@ -170,7 +170,7 @@ fn handle_originate(
     let contract_type = ContractType {
         self_: addr.clone(),
         originated_by,
-        storage: serde_json::to_vec(&initial_storage).expect("error"),
+        storage: serde_json::to_string(&initial_storage).expect("error"),
         module: Some(Box::from(module)),
         serialized_module: serialized,
         constants: serde_json::to_vec(&constants).expect("error"),
@@ -211,7 +211,7 @@ fn handle_invoke(
                 let mut contract = contract;
                 contract.init()?;
                 let initial_storage: Value =
-                    serde_json::from_slice(&contract.storage).expect("error");
+                    serde_json::from_str(&contract.storage).expect("error");
                 let constantst: Vec<(i32, Value)> =
                     serde_json::from_slice(&contract.constants).expect("error");
                 let invoke_payload = InvokeManaged {
@@ -244,7 +244,7 @@ fn handle_invoke(
                         gas_limit = remaining_gas;
                         context.ticket_table.finalize();
                         let serialized_storage =
-                            serde_json::to_vec(&new_storage).expect("serialization_error");
+                            serde_json::to_string(&new_storage).expect("serialization_error");
                         {
                             let deposit = unsafe { &mut CONSUMEDTICKETS };
                             let address = contract_addr_to_string(&address);

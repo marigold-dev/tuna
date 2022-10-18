@@ -13,7 +13,7 @@ use crate::{
 pub struct ContractType {
     pub self_: ContractAddress,
     pub originated_by: String,
-    pub storage: Vec<u8>,
+    pub storage: String,
     #[serde(skip_deserializing, skip_serializing)]
     pub module: Option<Box<Module>>,
     pub serialized_module: Vec<u8>,
@@ -21,7 +21,7 @@ pub struct ContractType {
     pub entrypoints: Option<FnvHashMap<String, Vec<Path>>>,
 }
 impl ContractType {
-    pub fn set_storage(&mut self, s: Vec<u8>) {
+    pub fn set_storage(&mut self, s: String) {
         self.storage = s
     }
     pub fn init(&mut self) -> VMResult<()> {
