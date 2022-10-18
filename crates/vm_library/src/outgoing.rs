@@ -11,6 +11,13 @@ pub struct SetOwned {
     #[serde(serialize_with = "json_ser", deserialize_with = "json_deser")]
     pub value: ContractType,
 }
+
+#[derive(Debug, Serialize)]
+pub struct SetBorrowed<'a> {
+    pub key: &'a str,
+    #[serde(serialize_with = "json_ser")]
+    pub value: &'a Cow<'a, ContractType>,
+}
 fn json_ser<S>(t: &ContractType, serializer: S) -> Result<S::Ok, S::Error>
 where
     S: Serializer,
