@@ -137,7 +137,7 @@ pub fn invoke(operation: String) -> impl FnMut(&mut IO) {
                     dbg!(s);
                     todo!()
                 }
-                ServerMessage::TakeTickets(_) => io.write(tickets.as_bytes()),
+                ServerMessage::TakeTickets(_) => (),
                 _ => continue,
             }
         }
