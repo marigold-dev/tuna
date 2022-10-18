@@ -13,14 +13,14 @@ use crate::{
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(tag = "type_", content = "content")]
 pub enum Operation {
-    OriginateManaged {
+    Originate {
         module_: String,
         constants: Vec<(u32, FromOcamlV)>,
         initial_storage: FromOcamlV,
         entrypoints: Option<FnvHashMap<String, Vec<Path>>>,
         source: Option<LigoCode>,
     },
-    InvokeManaged {
+    Invoke {
         address: ContractAddress,
         argument: FromOcamlV,
         #[serde(default = "def")]

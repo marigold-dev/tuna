@@ -86,7 +86,7 @@ fn handle_transaction(
     let io = &mut context.io;
     if let Ok(op) = serde_json::from_str(&transaction.operation) {
         match op {
-            Operation::InvokeManaged {
+            Operation::Invoke {
                 address,
                 argument,
                 gas_limit: op_gas_limit,
@@ -123,7 +123,7 @@ fn handle_transaction(
                 gas_limit = new_limit;
                 Ok(())
             }
-            Operation::OriginateManaged {
+            Operation::Originate {
                 module_,
                 constants,
                 initial_storage,
@@ -346,7 +346,7 @@ fn handle_invoke(
                                                             entrypoint: Some(entrypoint.to_owned()),
                                                         },
                                                     );
-                                                let operation = Operation::InvokeManaged {
+                                                let operation = Operation::Invoke {
                                                     address: extra,
                                                     argument: FromOcamlV(content),
                                                     gas_limit: remaining_gas,
