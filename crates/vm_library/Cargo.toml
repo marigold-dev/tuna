@@ -23,13 +23,16 @@ once_cell = "*"
 bincode = "1.3.3"
 fnv = "1.0.3"
 serde_bytes = "*"
-bs58 = "*"
+bs58 = { version = "*", features = [ "check" ] }
 sha2 = "*"
 nix = "*"
 sha3 = "*"
 base64 = "0.13.0"
 log = "*"
 env_logger = "*"
+ed25519 = "*"
+ring-compat = "*"
+
 [lib]
 bench = false
 
